@@ -781,12 +781,12 @@
 		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
 			
 			<div class="article-prev border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
-				<a class="prev" rel="prev" href="/2026/03/21/CTFS-wp/minilctf2023%20wp/">
+				<a class="prev" rel="prev" href="/2026/03/21/CTFS-wp/Hgame%202023%20%E9%83%A8%E5%88%86wp/">
 					<span class="left arrow-icon flex justify-center items-center">
 						<i class="fa-solid fa-chevron-left"></i>
 					</span>
 					<span class="title flex justify-center items-center">
-						<span class="post-nav-title-item truncate max-w-48">minilctf2023 pwn wp &amp; 复现</span>
+						<span class="post-nav-title-item truncate max-w-48">Hgame 2023 pwn部分wp</span>
 						<span class="post-nav-item">Prev posts</span>
 					</span>
 				</a>
@@ -794,9 +794,9 @@
 			
 			
 			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
-				<a class="next" rel="next" href="/2026/03/21/CTFS-wp/Hgame%202023%20%E9%83%A8%E5%88%86wp/">
+				<a class="next" rel="next" href="/2026/03/21/V8/V8%E5%88%A9%E7%94%A8(4)-CVE-2021-38001/">
 					<span class="title flex justify-center items-center">
-						<span class="post-nav-title-item truncate max-w-48">Hgame 2023 pwn部分wp</span>
+						<span class="post-nav-title-item truncate max-w-48">V8利用(4)-CVE-2021-38001</span>
 						<span class="post-nav-item">Next posts</span>
 					</span>
 					<span class="right arrow-icon flex justify-center items-center">
@@ -820,51 +820,116 @@
 
         
             
-    <div id="waline"></div>
-    <script type="module" data-swup-reload-script>
-      import { init } from '/js/libs/waline.js';
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        (function() {
+            const containerId = "giscus-container";
+            const mapping = "pathname";
+            const lang = "zh-CN";
+            const inputPosition = "bottom";
+            const reactionsEnabled = "1" === "1";
+            const emitMetadata = "1" === "1";
+            const strict = "0" === "1";
+            const loading = "lazy";
 
-      (function() {
-        const startPath = location.pathname;
-        const startTime = Date.now();
-        const retryDelay = 200;
-        const retryLimit = 5000;
+            const getTerm = () => {
+                if (mapping === "pathname") return location.pathname;
+                if (mapping === "url") return location.href;
+                if (mapping === "title") return document.title;
+                if (mapping === "og:title") {
+                    const ogTitle = document.querySelector("meta[property='og:title']");
+                    return ogTitle?.content || document.title;
+                }
+                return "";
+            };
 
-        const runWaline = () => {
-          if (location.pathname !== startPath) {
-            return;
-          }
+            const sendUpdate = () => {
+                const iframe = document.querySelector("iframe.giscus-frame");
+                if (!iframe) {
+                    return;
+                }
 
-          const container = document.getElementById('waline');
-          if (!container) {
-            if (Date.now() - startTime < retryLimit) {
-              setTimeout(runWaline, retryDelay);
-            }
-            return;
-          }
+                const setConfig = {
+                    theme: "preferred_color_scheme",
+                    lang,
+                    inputPosition,
+                    reactionsEnabled,
+                    emitMetadata,
+                    strict,
+                };
 
-          if (window.redefineWalineInstance?.destroy) {
-            window.redefineWalineInstance.destroy();
-          }
+                if (mapping !== "number") {
+                    const term = getTerm();
+                    if (term) {
+                        setConfig.term = term;
+                    }
+                }
 
-          container.innerHTML = '';
-          window.redefineWalineInstance = init({
-            el: '#waline',
-            serverURL: 'https://example.example.com',
-            path: location.pathname,
-            dark: 'body[class~="dark-mode"]',
-            reaction: false,
-            requiredMeta: ['nick', 'mail'],
-            emoji: [],
-                      lang: 'zh-CN',
-          recaptchaV3Key: 'wasd',
-          });
-        };
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig } },
+                    "https://giscus.app",
+                );
+            };
 
-        runWaline();
-      })();
+            const loadGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                const iframe = container.querySelector("iframe.giscus-frame");
+                if (iframe) {
+                    sendUpdate();
+                    return;
+                }
+
+                if (container.dataset.giscusInit === "true") {
+                    return;
+                }
+
+                const giscusConfig = {
+                    src: "https://giscus.app/client.js",
+                    "data-repo": "Staticccccccc/Staticccccccc.github.io",
+                    "data-repo-id": "R_kgDOImd3Hg",
+                    "data-category": "Announcements",
+                    "data-category-id": "DIC_kwDOImd3Hs4DDa1y",
+                    "data-mapping": mapping,
+                    "data-strict": "0",
+                    "data-reactions-enabled": "1",
+                    "data-emit-metadata": "1",
+                    "data-theme": "preferred_color_scheme",
+                    "data-lang": lang,
+                    "data-input-position": inputPosition,
+                    "data-loading": loading,
+                    crossorigin: "anonymous",
+                    async: true,
+                };
+
+                const giscusScript = document.createElement("script");
+                for (const key in giscusConfig) {
+                    giscusScript.setAttribute(key, giscusConfig[key]);
+                }
+                container.appendChild(giscusScript);
+                container.dataset.giscusInit = "true";
+            };
+
+            const runGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                if (container.querySelector("iframe.giscus-frame")) {
+                    sendUpdate();
+                    return;
+                }
+
+                loadGiscus();
+            };
+
+            runGiscus();
+        })();
     </script>
-
 
 
         
