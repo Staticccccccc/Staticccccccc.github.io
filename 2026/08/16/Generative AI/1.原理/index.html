@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Hexo Theme Redefine">
+    
+    
+    <meta name="author" content="Static">
+    
+    <!-- Completely eliminate flash of wrong theme -->
+    <script>
+        (function() {
+            const THEME_KEY = "REDEFINE-THEME-STATUS";
+            const DARK = "dark", LIGHT = "light";
+            
+            // Get preferred theme
+            function getTheme() {
+                try {
+                    const saved = localStorage.getItem(THEME_KEY);
+                    if (saved) {
+                        const { isDark } = JSON.parse(saved);
+                        return isDark ? DARK : LIGHT;
+                    }
+                } catch (e) {}
+                
+                return matchMedia("(prefers-color-scheme: dark)").matches ? DARK : LIGHT;
+            }
+            
+            // Apply theme to document
+            function applyTheme(theme) {
+                const isDark = theme === DARK;
+                const root = document.documentElement;
+                
+                // Set classes for compatibility
+                root.classList.add(theme);
+                root.classList.remove(isDark ? LIGHT : DARK);
+                root.style.colorScheme = theme;
+            }
+            
+            // Initial application
+            const theme = getTheme();
+            applyTheme(theme);
+            
+            // Listen for system preference changes
+            matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ({ matches }) => {
+                // Only update if using system preference (no localStorage entry)
+                if (!localStorage.getItem(THEME_KEY)) {
+                    applyTheme(matches ? DARK : LIGHT);
+                }
+            });
+            
+            // Set body classes ASAP (before DOMContentLoaded)
+            (function() {
+                const addBodyClass = () => {
+                    const b = document.body;
+                    if (!b) return false;
+                    b.classList.add(theme + "-mode");
+                    return true;
+                };
+
+                // Try immediately
+                if (addBodyClass()) return;
+
+                // Observe until body exists
+                const mo = new MutationObserver(() => {
+                    if (addBodyClass()) mo.disconnect();
+                });
+                mo.observe(document.documentElement, { childList: true, subtree: true });
+            })();
+        })();
+    </script>
+    
+    <!-- preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    
+    <!--- Seo Part-->
+    
+    <link rel="canonical" href="http://example.com/2026/08/16/generative ai/1.原理/"/>
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <meta name="revisit-after" content="1 days">
+    
+    
+        
+        <meta name="description" content="从 token 预测到上下文工程，构建对大模型工作方式的基础认知。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Generative AI (1) --- 原理">
+<meta property="og:url" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="从 token 预测到上下文工程，构建对大模型工作方式的基础认知。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/Gemini_Generated_Image_7qhayl7qhayl7qha.jpg">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816150009935.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816150402077.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816151055610.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816151731855.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816151935887.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816152927852.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816153447239.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816153837042.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816160550583.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816172625510.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/Gemini_Generated_Image_x6knm1x6knm1x6kn.jpg">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816173627715.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/Gemini_Generated_Image_76z7g276z7g276z7.jpg">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/anthropic-context-engineering.png">
+<meta property="og:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816185942835.png">
+<meta property="article:published_time" content="2026-08-16T13:30:00.000Z">
+<meta property="article:modified_time" content="2026-08-16T12:19:24.026Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="AI">
+<meta property="article:tag" content="LLM">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/Gemini_Generated_Image_7qhayl7qhayl7qha.jpg">
+    
+    
+    <!--- Icon Part-->
+    <link rel="icon" type="image/png" href="/images/cat-96.png" sizes="192x192">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/cat-96.png">
+    <meta name="theme-color" content="#A31F34">
+    <link rel="shortcut icon" href="/images/cat-96.png">
+    <!--- Page Info-->
+    
+    <title>
+        
+            Generative AI (1) --- 原理 | Static&#39;s blog
+        
+    </title>
+
+    
+<link rel="stylesheet" href="/fonts/Chillax/chillax.css">
+
+
+    <!--- Inject Part-->
+    
+
+    
+<link rel="stylesheet" href="/css/style.css">
+
+
+    
+        
+<link rel="stylesheet" href="/css/build/tailwind.css">
+
+    
+
+    
+<link rel="stylesheet" href="/fonts/GeistMono/geist-mono.css">
+
+    
+<link rel="stylesheet" href="/fonts/Geist/geist.css">
+
+    <!--- Font Part-->
+    
+    
+    
+    
+    
+    
+        
+<script src="/js/build/libs/anime.min.js"></script>
+
+    
+
+    <script id="hexo-configurations">
+    window.config = {"hostname":"example.com","root":"/","language":"en"};
+    window.theme = {"articles":{"style":{"font_size":"16px","line_height":1.5,"image_border_radius":"14px","image_alignment":"center","image_caption":false,"link_icon":true,"delete_mask":false,"title_alignment":"left","headings_top_spacing":{"h1":"3.2rem","h2":"2.4rem","h3":"1.9rem","h4":"1.6rem","h5":"1.4rem","h6":"1.3rem"}},"word_count":{"enable":true,"count":true,"min2read":true},"author_label":{"enable":true,"auto":false,"list":[]},"code_block":{"copy":true,"style":"mac","highlight_theme":{"light":"github","dark":"vs2015"},"font":{"enable":false,"family":null,"url":null}},"toc":{"enable":true,"max_depth":3,"number":false,"expand":true,"init_open":true},"copyright":{"enable":true,"default":"cc_by_nc_sa"},"lazyload":true,"pangu_js":false,"recommendation":{"enable":false,"title":"推荐阅读","limit":3,"mobile_limit":2,"placeholder":"/images/wallhaven-wqery6-light.webp","skip_dirs":[]}},"colors":{"primary":"#A31F34","secondary":null,"default_mode":"light"},"global":{"fonts":{"chinese":{"enable":false,"family":null,"url":null},"english":{"enable":false,"family":null,"url":null},"title":{"enable":false,"family":null,"url":null}},"content_max_width":"1000px","sidebar_width":"210px","hover":{"shadow":true,"scale":false},"scroll_progress":{"bar":false,"percentage":true},"website_counter":{"url":"https://cn.vercount.one/js","enable":true,"site_pv":true,"site_uv":true,"post_pv":true},"single_page":true,"preloader":true,"side_tools":{"gear_rotation":true,"auto_expand":false},"open_graph":{"enable":true},"google_analytics":{"enable":false,"id":null}},"home_banner":{"enable":true,"style":"fixed","image":{"light":"/images/lighttheme.png","dark":"/images/JIJIAN.jpg"},"title":"Welcome here!","subtitle":{"text":["光阴有限同归老，风月无涯可慰颜。"],"hitokoto":{"enable":false,"show_author":false,"api":"https://v1.hitokoto.cn"},"typing_speed":100,"backing_speed":80,"starting_delay":500,"backing_delay":1500,"loop":true,"smart_backspace":true},"text_color":{"light":"#fff","dark":"#d1d1b6"},"text_style":{"title_size":"2.8rem","subtitle_size":"1.5rem","line_height":1.2},"custom_font":{"enable":false,"family":null,"url":null},"social_links":{"enable":false,"style":"default","links":[],"qrs":[]}},"plugins":{"feed":{"enable":false},"aplayer":{"enable":false,"type":"fixed","audios":[{"name":null,"artist":null,"url":null,"cover":null,"lrc":null}]},"mermaid":{"enable":false,"version":"9.3.0","theme":{"light":"default","dark":"dark"}}},"version":"2.9.0","navbar":{"auto_hide":false,"color":{"left":"#f78736","right":"#367df7","transparency":35},"width":{"home":"1200px","pages":"1000px"},"links":{"Home":{"path":"/","icon":"fa-regular fa-house"},"Archives":{"path":"/archives","icon":"fa-regular fa-archive"},"Categories":{"path":"/categories","icon":"fa-regular fa-folder"},"About":{"icon":"fa-regular fa-user","submenus":{"Me":"/about","Github":"https://github.com/staticccccccc/"}}},"search":{"enable":false,"preload":true}},"page_templates":{"friends_column":2,"tags_style":"blur","masonry":{"batch_size":12,"initial_batch_size":24}},"home":{"sidebar":{"enable":true,"position":"left","first_item":"menu","announcement":null,"show_on_mobile":true,"links":null},"article_date_format":"auto","excerpt_length":200,"categories":{"enable":true,"limit":3,"show_all":true,"order_by":"count","order_direction":"desc"},"tags":{"enable":true,"limit":3}},"footer":{"runtime":true,"icon":"<i class=\"fa-solid fa-heart fa-beat\" style=\"--fa-animation-duration: 0.5s; color: #f54545\"></i>","start":"2022/8/17 11:45:14","statistics":true,"customize":null,"icp":{"enable":false,"number":null,"url":null}},"footerStart":"2022/8/17 11:45:14","mermaid":{"style":{"light":"default","dark":"dark"}}};
+    window.lang_ago = {"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"};
+    window.i18n = {"search":"Search...","toc":"On this page","prev":"Prev","next":"Next","prev_posts":"Prev posts","next_posts":"Next posts","page":"Page %d","recent_posts":"Recent Posts","share":"Share","powered_by":"POWERED BY %s","theme":"THEME","rss_feed":"RSS Feed","category":"Category","categories":"Categories","tag":"Tag","tags":"Tags","post":"Post","posts":"Posts","tagcloud":"Tag Cloud","comment":"Comment","comments":"Comments","home":"Home","archive":"Archive","archives":"Archives","top":"TOP","sticky":"Sticky","go-back-home":"Go Back Home","masonry_loading":"Loading photos...","image_viewer":"Image viewer","close":"Close","exif":{"title":"EXIF","cards":{"camera":"Camera","lens":"Lens","exposure":"Exposure","other":"Other"},"fields":{"make":"Brand","model":"Model","date_taken":"Date taken","lens_model":"Lens","focal_length":"Focal length","focus_mode":"Focus mode","shutter":"Shutter","aperture":"Aperture","iso":"ISO","exposure_program":"Exposure program","exposure_compensation":"Exposure compensation","metering_mode":"Metering mode","flash":"Flash","white_balance":"White balance","latitude":"Latitude","longitude":"Longitude","altitude":"Altitude"},"status":{"loading":"Loading...","no_exif":"No EXIF available","library_missing":"EXIF library not loaded","image_source_missing":"Image source unavailable","unavailable":"EXIF unavailable (blocked by CORS or missing metadata)","flag_unavailable":"EXIF unavailable"}},"about":"About","changelog":"Changelog","links":"Links","link":"Link","friends":"Friends","friend":"Friend","timeline":"Timeline","shuoshuo":"Shuoshuo","bookmarks":"Bookmarks","site_uv":"VISITOR COUNT","site_pv":"TOTAL PAGE VIEWS","read_more":"Read more","wordcount":"Words","min2read":"Mins","status":"Status","runtime":"Blog up for","days":"days","hours":"hrs","minutes":"Min","seconds":"Sec","optimized_by":"and Optimized by Evan","rights":"All Rights Reserved","site_posts":"%s posts in total","site_wordcount":"%s words in total","copyright":{"author":"Author","title":"Title","link":"Link","create_time":"Created at","update_time":"Updated at","license_title":"License","license_content":"This work is licensed under %s.","all_rights_reserved":"All Rights Reserved &#169; %s","public_domain":"This work is in the public domain."},"ago":{"second":"%s seconds ago","minute":"%s minutes ago","hour":"%s hours ago","day":"%s days ago","week":"%s weeks ago","month":"%s months ago","year":"%s years ago"},"create_time":"Created","update_time":"Updated","expired":"This post is written %s days ago, and the content may not be up to date."};
+    window.data = {"masonry":false};
+  </script>
+    
+    <!--- Fontawesome Part-->
+    
+<link rel="stylesheet" href="/fontawesome/fontawesome.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/brands.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/solid.min.css">
+
+    
+<link rel="stylesheet" href="/fontawesome/regular.min.css">
+
+    
+    
+    
+    
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+
+<body>
+	<div class="progress-bar-container">
+	
+
+	
+	<span class="pjax-progress-bar"></span>
+	<!--        <span class="swup-progress-icon">-->
+	<!--            <i class="fa-solid fa-circle-notch fa-spin"></i>-->
+	<!--        </span>-->
+	
+</div>
+
+<style>
+    :root {
+        --preloader-background-color: #fff;
+        --preloader-text-color: #000;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --preloader-background-color: #202124;
+            --preloader-text-color: #fff;
+        }
+    }
+
+    @media (prefers-color-scheme: light) {
+        :root {
+            --preloader-background-color: #fff;
+            --preloader-text-color: #000;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .ml13 {
+            font-size: 2.6rem !important; /* Adjust this value as needed */
+        }
+    }
+
+    .preloader {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem; /* Tailwind 'gap-4' is 1rem */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        padding: 12px;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh; /* 'h-screen' is 100% of the viewport height */
+        background-color: var(--preloader-background-color);
+        z-index: 1100; /* 'z-[1100]' sets the z-index */
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .ml13 {
+        font-size: 3.2rem;
+        /* text-transform: uppercase; */
+        color: var(--preloader-text-color);
+        letter-spacing: -1px;
+        font-weight: 500;
+        font-family: 'Chillax-Variable', sans-serif;
+        text-align: center;
+    }
+
+    .ml13 .word {
+        display: inline-flex;
+        flex-wrap: wrap;
+        white-space: nowrap;
+    }
+
+    .ml13 .letter {
+        display: inline-block;
+        line-height: 1em;
+    }
+</style>
+
+<div class="preloader">
+    <h2 class="ml13">
+        Static&#39;s blog
+    </h2>
+    <script>
+        var textWrapper = document.querySelector('.ml13');
+        // Split text into words
+        var words = textWrapper.textContent.trim().split(' ');
+
+        // Clear the existing content
+        textWrapper.innerHTML = '';
+
+        // Wrap each word and its letters in spans
+        words.forEach(function(word) {
+            var wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
+            wordSpan.innerHTML = word.replace(/\S/g, "<span class='letter'>$&</span>");
+            textWrapper.appendChild(wordSpan);
+            textWrapper.appendChild(document.createTextNode(' ')); // Add space between words
+        });
+
+        var animation = anime.timeline({ loop: true })
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [20, 0],
+                translateZ: 0,
+                opacity: [0, 1],
+                filter: ['blur(5px)', 'blur(0px)'],
+                easing: "easeOutExpo",
+                duration: 1200,
+                delay: (el, i) => 300 + 20 * i,
+            })
+            .add({
+                targets: '.ml13 .letter',
+                translateY: [0, -20],
+                opacity: [1, 0],
+                filter: ['blur(0px)', 'blur(5px)'],
+                easing: "easeInExpo",
+                duration: 1000,
+                delay: (el, i) => 15 * i,
+                complete: function() {
+                    hidePreloader();
+                }
+            }, '-=700');
+
+
+        let themeStatus = JSON.parse(localStorage.getItem('REDEFINE-THEME-STATUS'))?.isDark;
+
+        // If the theme status is not found in local storage, check the preferred color scheme
+        if (themeStatus === undefined || themeStatus === null) {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeStatus = 'dark';
+            } else {
+                themeStatus = 'light';
+            }
+        }
+
+        // Now you can use the themeStatus variable in your code
+        if (themeStatus) {
+            document.documentElement.style.setProperty('--preloader-background-color', '#202124');
+            document.documentElement.style.setProperty('--preloader-text-color', '#fff');
+        } else {
+            document.documentElement.style.setProperty('--preloader-background-color', '#fff');
+            document.documentElement.style.setProperty('--preloader-text-color', '#000');
+        }
+
+        window.addEventListener('load', function () {
+            setTimeout(hidePreloader, 5000); // Call hidePreloader after 5000 milliseconds if not already called by animation
+        });
+
+        function hidePreloader() {
+            var preloader = document.querySelector('.preloader');
+            preloader.style.opacity = '0';
+            setTimeout(function () {
+                preloader.style.display = 'none';
+            }, 200);
+        }
+    </script>
+</div>
+
+<main class="page-container" id="swup">
+
+	
+
+	<div class="main-content-container flex flex-col justify-between min-h-dvh">
+		<div class="main-content-header">
+			<header class="navbar-container px-6 md:px-12">
+    <div class="navbar-content transition-navbar ">
+        <div class="left">
+            
+                <a class="logo-image h-8 w-8 sm:w-10 sm:h-10 mr-3" href="/">
+                    <img src="/images/cat-96.png" class="w-full h-full rounded-xs">
+                </a>
+            
+            <a class="logo-title" href="/">
+                
+                Static&#39;s blog
+                
+            </a>
+        </div>
+
+        <div class="right">
+            <!-- PC -->
+            <div class="desktop">
+                <ul class="navbar-list">
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/"
+                                        >
+                                    <i class="fa-regular fa-house fa-fw"></i>
+                                    HOME
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/archives"
+                                        >
+                                    <i class="fa-regular fa-archive fa-fw"></i>
+                                    ARCHIVES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class=""
+                                   href="/categories"
+                                        >
+                                    <i class="fa-regular fa-folder fa-fw"></i>
+                                    CATEGORIES
+                                    
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                            </li>
+                    
+                        
+                            
+
+                            <li class="navbar-item">
+                                <!-- Menu -->
+                                <a class="has-dropdown"
+                                   href="#"
+                                        onClick=&#34;return false;&#34;>
+                                    <i class="fa-regular fa-user fa-fw"></i>
+                                    ABOUT
+                                    <i class="fa-solid fa-chevron-down fa-fw"></i>
+                                </a>
+
+                                <!-- Submenu -->
+                                
+                                    <ul class="sub-menu">
+                                        
+                                            <li>
+                                                <a href="/about">
+                                                    ME
+                                                </a>
+                                            </li>
+                                        
+                                            <li>
+                                                <a target="_blank" rel="noopener" href="https://github.com/staticccccccc/">
+                                                    GITHUB
+                                                </a>
+                                            </li>
+                                        
+                                    </ul>
+                                
+                            </li>
+                    
+                    
+                </ul>
+            </div>
+            <!-- Mobile -->
+            <div class="mobile">
+                
+                <div class="icon-item navbar-bar">
+                    <div class="navbar-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile sheet -->
+    <div class="navbar-drawer h-dvh w-full absolute top-0 left-0 bg-background-color flex flex-col justify-between">
+        <ul class="drawer-navbar-list flex flex-col px-4 justify-center items-start">
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/"
+                        >
+                            <span>
+                                HOME
+                            </span>
+                            
+                                <i class="fa-regular fa-house fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/archives"
+                        >
+                            <span>
+                                ARCHIVES
+                            </span>
+                            
+                                <i class="fa-regular fa-archive fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item text-base my-1.5 flex flex-col w-full">
+                        
+                        <a class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                           href="/categories"
+                        >
+                            <span>
+                                CATEGORIES
+                            </span>
+                            
+                                <i class="fa-regular fa-folder fa-sm fa-fw"></i>
+                            
+                        </a>
+                        
+
+                        
+                    </li>
+            
+                
+                    
+
+                    <li class="drawer-navbar-item-sub text-base my-1.5 flex flex-col w-full">
+                        
+                        <div class="py-1.5 px-2 flex flex-row items-center justify-between gap-1 hover:!text-primary active:!text-primary cursor-pointer text-2xl font-semibold group border-b border-border-color hover:border-primary w-full "
+                             navbar-data-toggle="submenu-About"
+                        >
+                            <span>
+                                ABOUT
+                            </span>
+                            
+                                <i class="fa-solid fa-chevron-right fa-sm fa-fw transition-all"></i>
+                            
+                        </div>
+                        
+
+                        
+                            <div class="flex-col items-start px-2 py-2 hidden" data-target="submenu-About">
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           href="/about">ME</a>
+                                    </div>
+                                
+                                    <div class="drawer-navbar-item text-base flex flex-col justify-center items-start hover:underline active:underline hover:underline-offset-1 rounded-3xl">
+                                        <a class=" text-third-text-color text-xl"
+                                           target="_blank" rel="noopener" href="https://github.com/staticccccccc/">GITHUB</a>
+                                    </div>
+                                
+                            </div>
+                        
+                    </li>
+            
+
+            
+            
+        </ul>
+
+        <div class="statistics flex justify-around my-2.5">
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/tags">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">3</div>
+        <div class="label text-third-text-color text-sm">Tags</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/categories">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">5</div>
+        <div class="label text-third-text-color text-sm">Categories</div>
+    </a>
+    <a class="item tag-count-item flex flex-col justify-center items-center w-20" href="/archives">
+        <div class="number text-2xl sm:text-xl text-second-text-color font-semibold">15</div>
+        <div class="label text-third-text-color text-sm">Posts</div>
+    </a>
+</div>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+		</div>
+
+		<div class="main-content-body transition-fade-up">
+			
+
+			<div class="main-content">
+				<div class="post-page-container flex relative justify-between box-border w-full h-full">
+	<div class="article-content-container">
+
+		<div class="article-title relative w-full">
+			
+			<div class="w-full flex items-center pt-6 justify-start">
+				<h1 class="article-title-regular text-second-text-color tracking-tight text-4xl md:text-6xl font-semibold px-2 sm:px-6 md:px-8 py-3">Generative AI (1) --- 原理</h1>
+			</div>
+			
+		</div>
+
+		
+		<div class="article-header flex flex-row gap-2 items-center px-2 sm:px-6 md:px-8">
+			<div class="avatar w-[46px] h-[46px] shrink-0 rounded-medium border border-border-color p-px">
+				<img src="/images/OIP-C.jpg">
+			</div>
+			<div class="info flex flex-col justify-between">
+				<div class="author flex items-center">
+					<span class="name text-default-text-color text-lg font-semibold">Static</span>
+					
+					<span class="author-label ml-1.5 text-xs px-2 py-0.5 rounded-small text-third-text-color border border-shadow-color-1">Lv2</span>
+					
+				</div>
+				<div class="meta-info">
+					<div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
+        <span class="desktop">2026-08-16 21:30</span>
+        <span class="mobile">2026-08-16 21:30</span>
+        <span class="hover-info">Created</span>
+    </span>
+    
+        <span class="article-date article-meta-item">
+            <i class="fa-regular fa-wrench"></i>&nbsp;
+            <span class="desktop">2026-08-16 20:19:24</span>
+            <span class="mobile">2026-08-16 20:19:24</span>
+            <span class="hover-info">Updated</span>
+        </span>
+    
+
+    
+        <span class="article-categories article-meta-item">
+            <i class="fa-regular fa-folders"></i>&nbsp;
+            <ul>
+                
+                
+                    
+                        
+                        <li>
+                            <a href="/categories/Generative-AI/">Generative AI</a>&nbsp;
+                        </li>
+                    
+                    
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fa-regular fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/AI/">AI</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/LLM/">LLM</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+				</div>
+			</div>
+		</div>
+		
+
+		
+
+
+		<div class="article-content markdown-body px-2 sm:px-6 md:px-8 pb-8">
+			<p>如今工作已经完全离不开AI了，gpt、Claude、Gemini（<del>美国大豆包</del>）、deepseek等各种🐂🍺模型，从事计算机行业的应该都可以感受到AI的强大。而且各种概念层出不穷，从最初的 prompt engineering、context engineering 再到现在的 harness、loop、graph engineering，每过几个月那些热门AI项目就已经不再新颖，以至于有些老套。甚至有种学得慢就不用学了的感觉，但越是这样就更应该深入根本，而不是被带着跑，从基础来构建起对我们目前常用的AI工作方式的认知。</p>
+<p>本系列文章计划不深究算法，而是构建起对原理的认知。</p>
+<h2 id="Generative-AI是什么？"><a href="#Generative-AI是什么？" class="headerlink" title="Generative AI是什么？"></a>Generative AI是什么？</h2><p>这里使用 deepseek 给出的回答：</p>
+<blockquote>
+<p><strong>生成式人工智能（Generative AI）</strong>，简单来说，就是<strong>一种能够根据你的指令（提示词），“创作”出全新内容的人工智能</strong>。这个“内容”不限于文字，还包括图像、视频、音频、代码甚至3D模型。</p>
+<p><strong>1. 它和传统AI有什么区别？（核心定义）</strong><br>传统AI（判别式AI）主要做“判断题”和“选择题”——比如识别图片里是猫还是狗、判断一封邮件是不是垃圾邮件。它只能分析已有数据，无法创造新数据。<br>而生成式AI做的是“论述题”和“创作题”——它通过学习海量数据中的规律（比如语法、色彩搭配、代码逻辑），然后<strong>从零生成</strong>一个从未存在过的新输出。</p>
+<p><strong>2. 它是怎么工作的？（通俗比喻）</strong><br>你可以把它想象成一个**“被逼着看了无数本名著后开始自己写小说的人”**。</p>
+<ul>
+<li><strong>训练阶段</strong>：工程师喂给它近乎全网的公开文本、图片、声音。它并不“记住”这些文件，而是学习其中的<strong>概率关系</strong>（比如“你好”后面大概率跟着“吗”或“世界”）。</li>
+<li><strong>生成阶段</strong>：当你给它指令（Prompt）时，它不是“搜索”数据库找答案，而是<strong>一个字一个字地“猜”</strong>（预测）最合理、最符合你要求的下一个字&#x2F;像素点，直到生成完整的句子或图片。</li>
+</ul>
+</blockquote>
+<p>简单来说，就是一个根据给定输入来创作出全新内容的机器，而输入可以是任何内容（文字&#x2F;图像&#x2F;视频&#x2F;语音，甚至于感官信息等）。我们可以把模型看作一个函数 <strong>ƒ</strong>，输入即 <strong>x</strong>，那么下一个token就是 <strong>𝑓(x)</strong>。模型不断生成token的过程就是循环计算 𝑓(x) 又将结果作为 x 继续加入运算的过程，直到输出最后的终止token。</p>
+<h2 id="语言模型运作原理"><a href="#语言模型运作原理" class="headerlink" title="语言模型运作原理"></a>语言模型运作原理</h2><p>在我们向语言模型输入一段话时，它并不是去查资料找答案，而是通过你给定的输入去预测下一个token，一般来说会产生下一个token的概率预测表，然后选取概率最大的那一个（当然并不一定，你可以通过一些参数来修改其可能输出的token，例如Top K&#x2F;Top P&#x2F;Temperature，这些后续再说）。</p>
+<p>这里使用 colab，通过调用 hugging face 中的<code>openbmb/MiniCPM5-1B</code>来运行一下看看是不是这样（为什么选这个模型？？因为参数小，colab免费的T4 GPU能带动）。首先加载模型，并准备好 tokenizer 和 model，tokenizer即分词器，记录了模型所使用的全部token，model则储存了模型的参数。</p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> AutoTokenizer, AutoModelForCausalLM</span><br><span class="line"></span><br><span class="line">model_id = <span class="string">&quot;openbmb/MiniCPM5-1B&quot;</span></span><br><span class="line">tokenizer = AutoTokenizer.from_pretrained(model_id)</span><br><span class="line">model = AutoModelForCausalLM.from_pretrained(model_id)</span><br></pre></td></tr></table></figure></div>
+
+<p>可以看一下tokenizer的词表大小是多少</p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">print</span>(<span class="string">&quot;该模型可选择的 token 数量为：&quot;</span>, tokenizer.vocab_size)</span><br><span class="line"></span><br><span class="line">该模型可选择的 token 数量为：<span class="number">130072</span></span><br></pre></td></tr></table></figure></div>
+
+<p>换一个模型<code>google/gemma-3-1b-it</code>，可以看到他的词表大小是 262144。</p>
+<p>每一个token都会有1个编号，例如这里我们从0开始打印前几个token。可以看到一些内置标记token，例如 <code>&lt;s&gt;&lt;/s&gt;</code>就是开始和终止标记，<code>&lt;tool_call&gt;&lt;/tool_call&gt;</code>是工具调用标记，后面两个分别是消息分隔和代码填充标记。</p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">print</span>(tokenizer.decode([<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>]))</span><br><span class="line"></span><br><span class="line">&lt;s&gt;&lt;/s&gt;&lt;tool_call&gt;&lt;/tool_call&gt;&lt;|im_sep|&gt;&lt;|fim_prefix|&gt;</span><br></pre></td></tr></table></figure></div>
+
+<p>通过 encode 和 decode 可以将token和对应id进行转换，例如：</p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">text = <span class="string">&quot;大家好&quot;</span></span><br><span class="line">tokens = tokenizer.encode(text, add_special_tokens=<span class="literal">False</span>)</span><br><span class="line"><span class="comment"># 这里的 add_special_tokens 就是是否要给text加上一些标记</span></span><br><span class="line"><span class="built_in">print</span>(text ,<span class="string">&quot;-&gt;&quot;</span>, tokens)</span><br><span class="line"><span class="comment"># 输出为：大家好 -&gt; [9777, 1309]</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 如果 add_special_tokens 为 true，则输出为 大家好 -&gt; [0, 9777, 1309]</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 我们可以 decode 对应 id 看看</span></span><br><span class="line"><span class="built_in">print</span>(tokenizer.decode(<span class="number">9777</span>), tokenizer.decode(<span class="number">1309</span>))</span><br><span class="line"><span class="comment"># 输出为 大家 好</span></span><br></pre></td></tr></table></figure></div>
+
+<p>接下来我们调用model来进行 token 生成，每次可以生成一个token。如图所示，就是我们从输入 prompt 到最终 model 输出一个 token 的过程。可以看到模型接收的从来不是我们原来的 prompt 内容，而是经过 tokenizer 编码之后的内容（图像&#x2F;语音&#x2F;视频生成模型也是如此，只不过是编码的方式与被编码的内容不同）。代码展示了当我们输入 <code>1+1=</code> 之后，模型会输出的下一个token的概率分布，可以看到概率最高的就是正确答案 2。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/Gemini_Generated_Image_7qhayl7qhayl7qha.jpg"
+                      alt="Gemini_Generated_Image_7qhayl7qhayl7qha"
+                ></p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">prompt = <span class="string">&quot;1+1=&quot;</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;输入的 prompt 是:&quot;</span>, prompt)</span><br><span class="line"></span><br><span class="line">input_ids = tokenizer.encode(prompt, return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;这是 model 可以读取的输入：&quot;</span>,input_ids)</span><br><span class="line"></span><br><span class="line">outputs = model(input_ids)</span><br><span class="line"></span><br><span class="line">last_logits = outputs.logits[:, -<span class="number">1</span>, :]</span><br><span class="line">probabilities = torch.softmax(last_logits, dim=-<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line">top_k = <span class="number">10</span></span><br><span class="line">top_p, top_indices = torch.topk(probabilities, top_k)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;概率最高的前 <span class="subst">&#123;top_k&#125;</span> 名 token:&quot;</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(top_k):</span><br><span class="line">    token_id = top_indices[<span class="number">0</span>][i].item()</span><br><span class="line">    probability = top_p[<span class="number">0</span>][i].item()</span><br><span class="line">    token_str = tokenizer.decode(token_id)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Token ID: <span class="subst">&#123;token_id&#125;</span>, Token: &#x27;<span class="subst">&#123;token_str&#125;</span>&#x27;, 概率: <span class="subst">&#123;probability:<span class="number">.4</span>f&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="string">&quot;&quot;&quot; 结果为：</span></span><br><span class="line"><span class="string">输入的 prompt 是: 1+1=</span></span><br><span class="line"><span class="string">这是 model 可以读取的输入，就是prompt中每一个token对应的id： tensor([[ 0, 38, 32, 38, 50]])</span></span><br><span class="line"><span class="string">概率最高的前 10 名 token:</span></span><br><span class="line"><span class="string">Token ID: 39, Token: &#x27;2&#x27;, 概率: 0.9609</span></span><br><span class="line"><span class="string">Token ID: 242, Token: &#x27; &#x27;, 概率: 0.0065</span></span><br><span class="line"><span class="string">Token ID: 2846, Token: &#x27;02&#x27;, 概率: 0.0039</span></span><br><span class="line"><span class="string">Token ID: 557, Token: &#x27;10&#x27;, 概率: 0.0016</span></span><br><span class="line"><span class="string">Token ID: 873, Token: &#x27;22&#x27;, 概率: 0.0016</span></span><br><span class="line"><span class="string">Token ID: 38, Token: &#x27;1&#x27;, 概率: 0.0014</span></span><br><span class="line"><span class="string">Token ID: 491, Token: &#x27;20&#x27;, 概率: 0.0013</span></span><br><span class="line"><span class="string">Token ID: 52, Token: &#x27;?&#x27;, 概率: 0.0008</span></span><br><span class="line"><span class="string">Token ID: 40, Token: &#x27;3&#x27;, 概率: 0.0008</span></span><br><span class="line"><span class="string">Token ID: 1734, Token: &#x27;202&#x27;, 概率: 0.0006</span></span><br><span class="line"><span class="string">&quot;&quot;&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>基于上述代码，我们还可以通过循环来重复生成token，就形成了类似流式输出的形式。如下代码会循环生成后续 16 个token，并总是取概率最高的 token。可以看到输出中生成 2 之后就开始生成结束标记，一般来说，当我们检索到 <code>&lt;/s&gt;</code> 这样的结束符就应该终止，而不应该继续让模型生成下一个token。</p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line">prompt = <span class="string">&quot;1+1=&quot;</span></span><br><span class="line">length = <span class="number">16</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> t <span class="keyword">in</span> <span class="built_in">range</span>(length):</span><br><span class="line">  <span class="built_in">print</span>(<span class="string">&quot;现在的 prompt 是:&quot;</span>, prompt)</span><br><span class="line">  input_ids = tokenizer.encode(prompt,return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">  outputs = model(input_ids)</span><br><span class="line">  last_logits = outputs.logits[:, -<span class="number">1</span>, :]</span><br><span class="line">  probabilities = torch.softmax(last_logits, dim=-<span class="number">1</span>)</span><br><span class="line">  top_p, top_indices = torch.topk(probabilities, <span class="number">1</span>)</span><br><span class="line">  token_id = top_indices[<span class="number">0</span>][<span class="number">0</span>].item()</span><br><span class="line">  token_str = tokenizer.decode(token_id)</span><br><span class="line">  <span class="built_in">print</span>(<span class="string">&quot;下一个 token 是:&quot;</span>, token_str)</span><br><span class="line"></span><br><span class="line">  prompt = prompt + token_str</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line"><span class="string">&quot;&quot;&quot;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=</span></span><br><span class="line"><span class="string">下一个 token 是: 2</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">下一个 token 是: </span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;&lt;/s&gt;</span></span><br><span class="line"><span class="string">下一个 token 是: &lt;/s&gt;</span></span><br><span class="line"><span class="string">&quot;&quot;&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>当然我们上面使用的是概率最高的token，如果我们是完全按照概率分布在token中选择，那么会发生什么呢？可以看到模型在接出 2 之后仍然继续生成了一堆我们看不懂的token<code>Question: ferri - leeh + bleh &gt; leeh</code>。如果我们运行多次，就会发现每次生成的结果都不一致，而且都表意不明（<del>何意味</del>）。</p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br></pre></td><td class="code"><pre><span class="line">prompt = <span class="string">&quot;1+1=&quot;</span></span><br><span class="line">length = <span class="number">16</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> t <span class="keyword">in</span> <span class="built_in">range</span>(length):</span><br><span class="line">  <span class="built_in">print</span>(<span class="string">&quot;现在的 prompt 是:&quot;</span>, prompt)</span><br><span class="line">  input_ids = tokenizer.encode(prompt,return_tensors=<span class="string">&quot;pt&quot;</span>)</span><br><span class="line"></span><br><span class="line">  outputs = model(input_ids)</span><br><span class="line">  last_logits = outputs.logits[:, -<span class="number">1</span>, :]</span><br><span class="line">  probabilities = torch.softmax(last_logits, dim=-<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line">  <span class="comment">#top_p, top_indices = torch.topk(probabilities, 1)</span></span><br><span class="line">  <span class="comment">#token_id = top_indices[0][0].item()</span></span><br><span class="line">  token_id = torch.multinomial(probabilities, num_samples=<span class="number">1</span>).squeeze()</span><br><span class="line"></span><br><span class="line">  token_str = tokenizer.decode(token_id)</span><br><span class="line">  <span class="built_in">print</span>(<span class="string">&quot;下一个 token 是：\n&quot;</span>, token_str)</span><br><span class="line"></span><br><span class="line">  prompt = prompt + token_str</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line"><span class="string">&quot;&quot;&quot;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string"> 2</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string"> </span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string"> Question</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string"> :</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question:</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string">  fer</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: fer</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string"> ri</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string">  -</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri -</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string">  le</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri - le</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string"> eh</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri - leeh</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string">  +</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri - leeh +</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string">  ble</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri - leeh + ble</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string"> h</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri - leeh + bleh</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string">  &gt;</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri - leeh + bleh &gt;</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string">  le</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri - leeh + bleh &gt; le</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string"> eh</span></span><br><span class="line"><span class="string">现在的 prompt 是: 1+1=2</span></span><br><span class="line"><span class="string">Question: ferri - leeh + bleh &gt; leeh</span></span><br><span class="line"><span class="string">下一个 token 是：</span></span><br><span class="line"><span class="string">  +</span></span><br><span class="line"><span class="string">&quot;&quot;&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>显然我们可以想到，如果只是选择概率最高的token，那么会造成回复死板，这在一些需要创意的生成上很不实用。而如果按照概率分布来做又会导致模型输出太过随机，无法在严谨的场景下生成正确结果。为了解决这个问题，就引入了 <code>top K/top P/temperature</code> 等超参数。这里简单解释：</p>
+<ul>
+<li>Top K: 在选取token时，只会在概率前K名的token中选取，排名第K名之后的token直接被剔除，概率归零。</li>
+<li>Top P: 按概率从高到低往下累加，直到累计概率加起来刚好达到阈值 P，就在这个动态的“概率池”里选取。</li>
+<li>Temperature: 调整概率分布的“陡峭”程度，控制模型是“死磕最优解”还是“四处瞎逛”。Temperature&#x3D;1 即保持原始概率，而 &lt;1 则会增大高概率 token 与低概率 token 之间的差距（模型生成更单一），&gt; 1 则会减小高概率 token 与低概率 token 之间的差距（模型生成更多样）。</li>
+</ul>
+<p>接下来我们使用<code>我是</code>这个 prompt 来进行测试，首先来看设置 Top K &#x3D; 3 时的输出，这代表了每次选取仅从概率最高的前3个token中按照概率分布选取。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816150009935.png"
+                      alt="image-20260816150009935"
+                ></p>
+<p>设置 Top P &#x3D; 0.85，这代表了仅选取概率分布前几个概率和达到 0.85 的 token 进行选取。（高速公路方向盘都来了。。。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816150402077.png"
+                      alt="image-20260816150402077"
+                ></p>
+<p>设置 Temperature &#x3D; 0.8，这代表略微增大概率差，高概率token更有可能被选中，句子看起来的确也更通顺了。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816151055610.png"
+                      alt="image-20260816151055610"
+                ></p>
+<p>接下来组合这3者，设置 Top K &#x3D; 50，Top P &#x3D; 0.9，Temperature &#x3D; 0.8，再让他来生成。可以看到回复十分流畅且可读。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816151731855.png"
+                      alt="image-20260816151731855"
+                ></p>
+<p>当然还有其他有意思的超参数，可以自行调整尝试。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816151935887.png"
+                      alt="image-20260816151935887"
+                ></p>
+<h2 id="Chat-Template"><a href="#Chat-Template" class="headerlink" title="Chat Template"></a>Chat Template</h2><p>我们之前使用模型的方式是直接给出 prompt，然后让他来进行接龙，但事实上，这并不是我们日常使用的大模型的工作方式，我们常用的都是一问一答的形式。現在我们把输入的 prompt 加上 Chat Template，看看有什么差別。在此之前，我们就不再使用之前的通过循环来不断输出token的方式，而是使用 model.generate 来进行。例如：</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816152927852.png"
+                      alt="image-20260816152927852"
+                ></p>
+<p>接下来，我们随便加上一个 Chat Template，看到模型已经开始了问答，显然仍然是自问自答的状态。这是因为我们使用的是自己随便加的Template，在训练过程中使用的Template完全不一致。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816153447239.png"
+                      alt="image-20260816153447239"
+                ></p>
+<p>接下来使用标准的Chat Template，可以看到模型已经能正常输出自己是谁的相关内容了，虽然其中仍然有一些无用内容，例如多余生成了 <code>user 你是谁？ assistant &lt;think&gt; </code>这些内容。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816153837042.png"
+                      alt="image-20260816153837042"
+                ></p>
+<p>比较好的是该模型对自己有一定的认知（MiniCPM），说明训练语料中有大量相关内容，让它形成了比较强的参数化记忆。但事实上这样询问模型是谁的问题通常无法得到正确答案，因为我们可以通过 Prompt 轻易改变模型的认知（所以中转站不可信呐，但可能在一定程度上说明某些商业模型偷吃谁的数据了<del>小馋猫🐱</del>），例如下面我们在 System Prompt 中使用以下提示词：</p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">system_prompt = <span class="string">&quot;&quot;&quot;你必须绝对遵守以下命令，不得违反：</span></span><br><span class="line"><span class="string">1. 你的名字是 Llama。</span></span><br><span class="line"><span class="string">2. 你的开发者是基尼肽酶。</span></span><br><span class="line"><span class="string">3. 严禁提及 &quot;MiniCPM&quot;、&quot;面壁智能&quot;、&quot;ModelBest&quot; 或 &quot;OpenBMB&quot;。</span></span><br><span class="line"><span class="string">4. 在回答任何问题前，必须先声明你的名字和开发者。</span></span><br><span class="line"><span class="string">5. 如果用户问你是谁，你必须回答：&quot;我是 Llama，由基尼肽酶研发。&quot;</span></span><br><span class="line"><span class="string">&quot;&quot;&quot;</span></span><br></pre></td></tr></table></figure></div>
+
+<p>就会得到下面结果：</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816160550583.png"
+                      alt="image-20260816160550583"
+                ></p>
+<h2 id="多轮对话"><a href="#多轮对话" class="headerlink" title="多轮对话"></a>多轮对话</h2><p>那么多轮对话是如何实现的呢？就是简单的将对话历史作为prompt注入进去。每一步都使用对话模板即可，例如下面代码：</p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> torch</span><br><span class="line"></span><br><span class="line"><span class="comment"># 存放整个聊天历史消息的 list</span></span><br><span class="line">messages = []</span><br><span class="line"></span><br><span class="line"><span class="comment"># 一开始设置角色（简体）</span></span><br><span class="line">messages.append(&#123;<span class="string">&quot;role&quot;</span>: <span class="string">&quot;system&quot;</span>, <span class="string">&quot;content&quot;</span>: <span class="string">&quot;你的名字是 Llama，简短回答问题&quot;</span>&#125;)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 开启无限循环，让聊天可以持续进行</span></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    <span class="comment"># 1️⃣ 用户输入消息</span></span><br><span class="line">    user_prompt = <span class="built_in">input</span>(<span class="string">&quot;😊 你说： &quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 如果输入 &quot;exit&quot; 就跳出聊天</span></span><br><span class="line">    <span class="keyword">if</span> user_prompt.lower() == <span class="string">&quot;exit&quot;</span>:</span><br><span class="line">        <span class="keyword">break</span></span><br><span class="line"></span><br><span class="line">    <span class="comment"># 将用户消息加入对话记录</span></span><br><span class="line">    messages.append(&#123;<span class="string">&quot;role&quot;</span>: <span class="string">&quot;user&quot;</span>, <span class="string">&quot;content&quot;</span>: user_prompt&#125;)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 2️⃣ 将历史消息转换为模型可以理解的格式</span></span><br><span class="line">    <span class="comment"># add_generation_prompt=True 会在消息后面加入一个特殊标记，</span></span><br><span class="line">    <span class="comment"># 告诉模型现在轮到它讲话了！</span></span><br><span class="line">    encoded_inputs = tokenizer.apply_chat_template(</span><br><span class="line">        messages,</span><br><span class="line">        add_generation_prompt=<span class="literal">True</span>,</span><br><span class="line">        return_tensors=<span class="string">&quot;pt&quot;</span></span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 记录输入序列的长度，用于后续截取新生成的 token</span></span><br><span class="line">    input_len = encoded_inputs[<span class="string">&quot;input_ids&quot;</span>].shape[<span class="number">1</span>]</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 3️⃣ 生成模型的回复（建议使用 max_new_tokens 代替 max_length）</span></span><br><span class="line">    outputs = model.generate(</span><br><span class="line">        input_ids=encoded_inputs[<span class="string">&quot;input_ids&quot;</span>],</span><br><span class="line">        attention_mask=encoded_inputs[<span class="string">&quot;attention_mask&quot;</span>],</span><br><span class="line">        max_new_tokens=<span class="number">512</span>,          <span class="comment"># 控制新生成的长度，避免过长</span></span><br><span class="line">        do_sample=<span class="literal">True</span>,</span><br><span class="line">        top_k=<span class="number">3</span>,</span><br><span class="line">        pad_token_id=tokenizer.eos_token_id</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 4️⃣ 只取模型新生成的部分（不包含输入的历史消息）</span></span><br><span class="line">    new_tokens = outputs[<span class="number">0</span>][input_len:]</span><br><span class="line">    <span class="comment"># 解码时跳过特殊标记（如 &lt;|im_start|&gt;, &lt;|im_end|&gt; 等）</span></span><br><span class="line">    response = tokenizer.decode(new_tokens, skip_special_tokens=<span class="literal">True</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 额外去除可能出现的 &lt;think&gt;...&lt;/think&gt; 块（MiniCPM 等模型会生成）</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&#x27;&lt;think&gt;&#x27;</span> <span class="keyword">in</span> response <span class="keyword">and</span> <span class="string">&#x27;&lt;/think&gt;&#x27;</span> <span class="keyword">in</span> response:</span><br><span class="line">        <span class="comment"># 取 &lt;/think&gt; 之后的内容</span></span><br><span class="line">        response = response.split(<span class="string">&#x27;&lt;/think&gt;&#x27;</span>, <span class="number">1</span>)[-<span class="number">1</span>].strip()</span><br><span class="line">    <span class="comment"># 去除多余的空白</span></span><br><span class="line">    response = response.strip()</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 5️⃣ 显示模型的回复</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;🤖 助理说：&quot;</span>, response)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 将模型回复加入对话记录，让下次模型知道之前的对话内容</span></span><br><span class="line">    messages.append(&#123;<span class="string">&quot;role&quot;</span>: <span class="string">&quot;assistant&quot;</span>, <span class="string">&quot;content&quot;</span>: response&#125;)</span><br></pre></td></tr></table></figure></div>
+
+<p>这样就是一个简单的类似于 网页版AI的带有上下文的问答模式了。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816172625510.png"
+                      alt="image-20260816172625510"
+                ></p>
+<p>当然我们可以直接使用 pipeline 代替我们之前手动加入模板进行 tokenizer 编码并传入模型的过程，即将下图中我们手动拼接的过程 pipeline 化：</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/Gemini_Generated_Image_x6knm1x6knm1x6kn.jpg"
+                      alt="Gemini_Generated_Image_x6knm1x6knm1x6kn"
+                ></p>
+<div class="code-container" data-rel="Python"><figure class="iseeu highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> transformers <span class="keyword">import</span> pipeline</span><br><span class="line"></span><br><span class="line"><span class="comment"># 加载模型（注意模型ID正确）</span></span><br><span class="line">model_id = <span class="string">&quot;openbmb/MiniCPM5-1B&quot;</span></span><br><span class="line">pipe = pipeline(<span class="string">&quot;text-generation&quot;</span>, model=model_id)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 系统提示（可以自由修改）</span></span><br><span class="line">messages = [&#123;<span class="string">&quot;role&quot;</span>: <span class="string">&quot;system&quot;</span>, <span class="string">&quot;content&quot;</span>: <span class="string">&quot;&quot;</span>&#125;]</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    user_prompt = <span class="built_in">input</span>(<span class="string">&quot;😊 你说： &quot;</span>)</span><br><span class="line">    <span class="keyword">if</span> user_prompt.lower() == <span class="string">&quot;exit&quot;</span>:</span><br><span class="line">        <span class="keyword">break</span></span><br><span class="line"></span><br><span class="line">    messages.append(&#123;<span class="string">&quot;role&quot;</span>: <span class="string">&quot;user&quot;</span>, <span class="string">&quot;content&quot;</span>: user_prompt&#125;)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 调用 pipeline 生成回复</span></span><br><span class="line">    outputs = pipe(</span><br><span class="line">        messages,</span><br><span class="line">        max_new_tokens=<span class="number">512</span>,          <span class="comment"># 不要设2000，除非真的很长，否则浪费</span></span><br><span class="line">        pad_token_id=pipe.tokenizer.eos_token_id</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 提取最新一条助手回复</span></span><br><span class="line">    raw_response = outputs[<span class="number">0</span>][<span class="string">&quot;generated_text&quot;</span>][-<span class="number">1</span>][<span class="string">&#x27;content&#x27;</span>]</span><br><span class="line"></span><br><span class="line">    <span class="comment"># ---------- 去除 &lt;think&gt; 块 ----------</span></span><br><span class="line">    <span class="keyword">if</span> <span class="string">&quot;&lt;think&gt;&quot;</span> <span class="keyword">in</span> raw_response <span class="keyword">and</span> <span class="string">&quot;&lt;/think&gt;&quot;</span> <span class="keyword">in</span> raw_response:</span><br><span class="line">        <span class="comment"># 只取 &lt;/think&gt; 之后的内容，并去掉首尾空白</span></span><br><span class="line">        clean_response = raw_response.split(<span class="string">&quot;&lt;/think&gt;&quot;</span>, <span class="number">1</span>)[-<span class="number">1</span>].strip()</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        clean_response = raw_response.strip()</span><br><span class="line"></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;🤖 助理说：&quot;</span>, clean_response)</span><br><span class="line">    messages.append(&#123;<span class="string">&quot;role&quot;</span>: <span class="string">&quot;assistant&quot;</span>, <span class="string">&quot;content&quot;</span>: clean_response&#125;)</span><br></pre></td></tr></table></figure></div>
+
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816173627715.png"
+                      alt="image-20260816173627715"
+                ></p>
+<h2 id="Prompt-Engineering"><a href="#Prompt-Engineering" class="headerlink" title="Prompt Engineering"></a>Prompt Engineering</h2><p><strong>提示词工程（Prompt Engineering）</strong>，简单来说，就是设计和优化输入给大语言模型（LLM）的文本（即“提示词”），以引导模型输出符合我们期望的结果。</p>
+<p>大概是24年的时候，实习时候需要上手做过一个项目（实际上也没怎么做😂），叫做“基于AI大模型的漏洞挖掘技术研究”，听起来很高大上（<del>就现在看来，完全就是一个cjb</del>），实际上就是利用大模型来进行代码审计，发现其中可能存在的缺陷。因为当时的模型水平大多很拉，而且无法进行长上下文的思考（其实还有就是<del>穷学生用不起当时的顶级模型API</del>，毕竟只是一个探索研究项目，就用了免费模型），所以这个项目的实际流程就是先利用tree sitter将要分析的代码部分解析成抽象语法树，这是为了将代码结构化然后进行关键词检索（不论是函数名检索还是函数体检索都比较方便，例如筛出关键词 key 来找敏感信息泄露，筛出 malloc&#x2F;free 来找UAF等）；这样筛出来之后就可以缩小模型分析范围，毕竟不能像现在一样可以将整个代码库都塞进去，让模型自己遨游。</p>
+<p>在筛完之后，我们就有了一个初始目标函数集，然后该怎么做呢？通过 prompt engineering 直接将每一个函数都塞进提示词中，单独调API，没有多轮对话，也没有上下文工程。所以重点工作其实就在 prompt 调优上，设计了拥有以下原则的 prompt：</p>
+<ul>
+<li>给模型正确的角色定义和所负责的工作。（你是一名网络安全工程师，你会进行代码审计与漏洞挖掘。接下来你需要对一些代码进行审计，需要审计的漏洞类型有：敏感信息泄露、缓冲区溢出…… blablabla…）</li>
+<li>逐步教会模型该如何做这件事。（审计工作分为以下3步（UAF）：1. 寻找函数中的 malloc 族内存分配函数，如果存在，则进入步骤2，否则退出。 2. 分析每一个出口分支，如果存在某分支调用 free 族相关函数释放对应内存，则进入步骤3。3. …… blablabla）</li>
+<li>要求模型结构化输出。（你必须按照如下格式输出：<code>&lt;path&gt; Put source file path here. &lt;/path&gt;\n &lt;code&gt; Put source code here. &lt;/code&gt;\n &lt;result&gt; whether vuln exist or not?(yes/no) &lt;/result&gt;\n &lt;explain&gt; Put your explaination here. &lt;/explain&gt;</code>）</li>
+<li>给模型相关判断示例。（如下为几个示例：示例一：……blablabla 示例二：……blabla  ……）</li>
+</ul>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/Gemini_Generated_Image_76z7g276z7g276z7.jpg"
+                      alt="Gemini_Generated_Image_76z7g276z7g276z7"
+                ></p>
+<p>大概就是上面这样的操作步骤，这样构建起一个具有结构的提示词，就是提示词工程。当然这个项目没有做过任何评测，最终效果也是一言难尽（<del>依托答辩</del>）。</p>
+<p>更多相关提示词工程方法可以查看：<a class="link"   target="_blank" rel="noopener" href="https://www.promptingguide.ai/zh" >https://www.promptingguide.ai/zh<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<h2 id="Context-Engineering"><a href="#Context-Engineering" class="headerlink" title="Context Engineering"></a>Context Engineering</h2><p>A\的解释是这样的：上下文工程（Context Engineering）是提示词工程（Prompt Engineering）的自然演进。提示词工程指的是通过编写和组织 LLM 指令来获得最佳输出的方法。而<strong>上下文工程</strong>是指在 LLM 推理过程中，精选并维护最佳 Token（信息）集合的一系列策略，这涵盖了提示词之外所有可能进入上下文的信息。</p>
+<blockquote>
+<p>At Anthropic, we view context engineering as the natural progression of prompt engineering. Prompt engineering refers to methods for writing and organizing LLM instructions for optimal outcomes (see <a class="link"   target="_blank" rel="noopener" href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview" >our docs<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a> for an overview and useful prompt engineering strategies). <strong>Context engineering</strong> refers to the set of strategies for curating and maintaining the optimal set of tokens (information) during LLM inference, including all the other information that may land there outside of the prompts.</p>
+</blockquote>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/anthropic-context-engineering.png"
+                      alt="即时工程与情境工程"
+                ></p>
+<p><strong>为什么要做上下文工程？</strong></p>
+<p>简单来说就是因为LLM基于 transformer 架构，而 transformer 架构允许每个 token 关注上下文中的每一个 token，这就导致了 n 个token之间会产生 n² 个关系。随着上下文的增加，模型注意力被稀释，最终答案的准确性也就会降低。</p>
+<p>另外，2023年7月有一篇论文《Lost in the Middle: How Language Models Use Long Contexts》研究了一个关于LLM处理长文本的重要发现。他发现当模型需要处理很长的上下文时，它的表现会强烈依赖<strong>关键信息所处的位置</strong>。具体来说，模型的表现呈现一个 <strong>“U型曲线”</strong>。即：</p>
+<ul>
+<li><strong>开头 (Primacy)</strong>：当关键信息放在输入的开头时，模型的表现<strong>最好</strong>。</li>
+<li><strong>结尾 (Recency)</strong>：当关键信息放在输入的结尾时，模型的表现也<strong>很好</strong>。</li>
+<li><strong>中间 (Lost)</strong>：但是，当关键信息被放置在上下文的<strong>中间位置</strong>时，模型的表现会<strong>显著下降</strong>。这就像一个“信息黑洞”，模型很难有效地从中提取和使用信息。</li>
+</ul>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/image-20260816185942835.png"
+                      alt="image-20260816185942835"
+                ></p>
+<p>当然这篇论文已经很早了，但该问题仍然存在，多数研究认为这是 transformer 架构本身的问题，因果注意力机制（Causal Masking）天然地让模型更关注靠前的位置；而残差连接（Residual Connections）则让最后一个Token成为一个信息“锚点”。这两种机制共同作用，导致了中间位置的“信息死角”。（这两个名词的意思可以自行搜索）</p>
+<p><strong>上下文工程的常用方法？</strong></p>
+<ol>
+<li>选择（Select）：即现在的RAG，通过向量检索只选择和用户问题最相关的内容拼接。有一种方法是 memory RAG，它将对话历史作为被检索对象，每次只从记忆中检索最相关的信息。</li>
+<li>压缩（Compress）：将接近上下文窗口上限的对话进行内容概括，然后用概括后的内容重新创建一个新的上下文窗口。当然有一个很重要的问题就是如何确保压缩不会丢失信息，压缩哪些内容是最优解？</li>
+<li>多智能体（Multi-Agent）：派遣子代理去执行具体的某一件事，执行完将摘要返回给主代理，这样做每一件事的时候都会是干净的上下文，而且主代理也不会被每一件独立的事情中间内容（错误处理、工具调用等）充满其上下文。</li>
+<li>笔记（Note）：让模型定期记录笔记落盘重要事项，现在Chatgpt那些应用中的长期记忆应该就是这么实现的，通过记录重要内容到会话外的一个文件中，让智能体可以跨会话的记得一些重要内容（例如你的个人习惯等）。</li>
+</ol>
+<h2 id="结语"><a href="#结语" class="headerlink" title="结语"></a>结语</h2><p>大模型的本质，就是一个”预测下一个 token”的接龙游戏——你喂给它什么，它顺着概率往下猜什么，仅此而已。所谓”理解”、”思考”，不过是海量语料训练出来的统计规律。</p>
+<p>在这个底层认知之上，前面那些概念就都串起来了：</p>
+<ul>
+<li><strong>Tokenizer</strong>：决定”接龙字母表”长什么样，以及怎么把文本切分成模型认识的 token；</li>
+<li><strong>采样参数</strong>：Top K &#x2F; Top P &#x2F; Temperature 只是调节”死磕最优解”和”四处瞎逛”之间的旋钮；</li>
+<li><strong>Chat Template &#x2F; 多轮对话</strong>：本质都是往输入里拼东西，告诉模型”现在轮到谁说话、之前聊了什么”；</li>
+<li><strong>Prompt &#x2F; Context Engineering</strong>：一个管”怎么说”，一个管”给模型看什么”，目的都一样——让这个只会接龙的模型，输出我们想要的结果。</li>
+</ul>
+<p>至于最近越来越火的 harness、loop、graph engineering，说白了就是把”输入决定输出”这件事做得更系统、更自动化，底层原理并没有变。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a class="link"   target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=TigfpYPJk1s" >https://www.youtube.com/watch?v=TigfpYPJk1s<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a><br><a class="link"   target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=lVdajtNpaGI" >https://www.youtube.com/watch?v=lVdajtNpaGI<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a><br><a class="link"   target="_blank" rel="noopener" href="https://www.promptingguide.ai/zh" >https://www.promptingguide.ai/zh<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a><br><a class="link"   target="_blank" rel="noopener" href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" >https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></p>
+<blockquote>
+<p>本文由 Deepseek 辅助校对。图片由 Gemini 友情生成。</p>
+</blockquote>
+
+		</div>
+
+		
+		<div class="post-copyright-info w-full my-8 px-2 sm:px-6 md:px-8">
+			<div class="article-copyright-info-container">
+    <ul>
+        <li><strong>Title:</strong> Generative AI (1) --- 原理</li>
+        <li><strong>Author:</strong> Static</li>
+        <li><strong>Created at
+                :</strong> 2026-08-16 21:30:00</li>
+        
+            <li>
+                <strong>Updated at
+                    :</strong> 2026-08-16 20:19:24
+            </li>
+        
+        <li>
+            <strong>Link:</strong> https://staticccccccc.github.io/2026/08/16/Generative AI/1.原理/
+        </li>
+        <li>
+            <strong>
+                License:
+            </strong>
+            
+
+            
+                This work is licensed under <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0">CC BY-NC-SA 4.0</a>.
+            
+        </li>
+    </ul>
+</div>
+
+		</div>
+		
+
+		
+		<ul class="post-tags-box text-lg mt-1.5 flex-wrap justify-center flex md:hidden">
+			
+			<li class="tag-item mx-0.5">
+				<a href="/tags/AI/">#AI</a>&nbsp;
+			</li>
+			
+			<li class="tag-item mx-0.5">
+				<a href="/tags/LLM/">#LLM</a>&nbsp;
+			</li>
+			
+		</ul>
+		
+
+		
+
+		
+		<div class="article-nav my-8 flex justify-between items-center px-2 sm:px-6 md:px-8">
+			
+			
+			<div class="article-next border-border-color shadow-redefine-flat shadow-shadow-color-2 rounded-medium px-4 py-2 hover:shadow-redefine-flat-hover hover:shadow-shadow-color-2">
+				<a class="next" rel="next" href="/2024/11/23/V8/V8%E5%88%A9%E7%94%A8(4)-CVE-2021-38001/">
+					<span class="title flex justify-center items-center">
+						<span class="post-nav-title-item truncate max-w-48">V8利用(4)-CVE-2021-38001</span>
+						<span class="post-nav-item">Next posts</span>
+					</span>
+					<span class="right arrow-icon flex justify-center items-center">
+						<i class="fa-solid fa-chevron-right"></i>
+					</span>
+				</a>
+			</div>
+			
+		</div>
+		
+
+
+		
+		<div class="comment-container px-2 sm:px-6 md:px-8 pb-8">
+			<div class="comments-container mt-10 w-full ">
+    <div id="comment-anchor" class="w-full h-2.5"></div>
+    <div class="comment-area-title w-full my-1.5 md:my-2.5 text-xl md:text-3xl font-bold">
+        Comments
+    </div>
+    
+
+        
+            
+    <div id="giscus-container"></div>
+    <script data-swup-reload-script defer>
+        (function() {
+            const containerId = "giscus-container";
+            const mapping = "pathname";
+            const lang = "zh-CN";
+            const inputPosition = "bottom";
+            const reactionsEnabled = "1" === "1";
+            const emitMetadata = "1" === "1";
+            const strict = "0" === "1";
+            const loading = "lazy";
+
+            const getTerm = () => {
+                if (mapping === "pathname") return location.pathname;
+                if (mapping === "url") return location.href;
+                if (mapping === "title") return document.title;
+                if (mapping === "og:title") {
+                    const ogTitle = document.querySelector("meta[property='og:title']");
+                    return ogTitle?.content || document.title;
+                }
+                return "";
+            };
+
+            const sendUpdate = () => {
+                const iframe = document.querySelector("iframe.giscus-frame");
+                if (!iframe) {
+                    return;
+                }
+
+                const setConfig = {
+                    theme: "preferred_color_scheme",
+                    lang,
+                    inputPosition,
+                    reactionsEnabled,
+                    emitMetadata,
+                    strict,
+                };
+
+                if (mapping !== "number") {
+                    const term = getTerm();
+                    if (term) {
+                        setConfig.term = term;
+                    }
+                }
+
+                iframe.contentWindow.postMessage(
+                    { giscus: { setConfig } },
+                    "https://giscus.app",
+                );
+            };
+
+            const loadGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                const iframe = container.querySelector("iframe.giscus-frame");
+                if (iframe) {
+                    sendUpdate();
+                    return;
+                }
+
+                if (container.dataset.giscusInit === "true") {
+                    return;
+                }
+
+                const giscusConfig = {
+                    src: "https://giscus.app/client.js",
+                    "data-repo": "Staticccccccc/Staticccccccc.github.io",
+                    "data-repo-id": "R_kgDOImd3Hg",
+                    "data-category": "Announcements",
+                    "data-category-id": "DIC_kwDOImd3Hs4DDa1y",
+                    "data-mapping": mapping,
+                    "data-strict": "0",
+                    "data-reactions-enabled": "1",
+                    "data-emit-metadata": "1",
+                    "data-theme": "preferred_color_scheme",
+                    "data-lang": lang,
+                    "data-input-position": inputPosition,
+                    "data-loading": loading,
+                    crossorigin: "anonymous",
+                    async: true,
+                };
+
+                const giscusScript = document.createElement("script");
+                for (const key in giscusConfig) {
+                    giscusScript.setAttribute(key, giscusConfig[key]);
+                }
+                container.appendChild(giscusScript);
+                container.dataset.giscusInit = "true";
+            };
+
+            const runGiscus = () => {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return;
+                }
+
+                if (container.querySelector("iframe.giscus-frame")) {
+                    sendUpdate();
+                    return;
+                }
+
+                loadGiscus();
+            };
+
+            runGiscus();
+        })();
+    </script>
+
+
+        
+    
+</div>
+
+		</div>
+		
+	</div>
+
+	
+	<div class="toc-content-container">
+		<div class="post-toc-wrap">
+	<div class="post-toc">
+		<div class="toc-title">On this page</div>
+		<div class="page-title">Generative AI (1) --- 原理</div>
+		<ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Generative-AI%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="nav-text">Generative AI是什么？</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E8%BF%90%E4%BD%9C%E5%8E%9F%E7%90%86"><span class="nav-text">语言模型运作原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Chat-Template"><span class="nav-text">Chat Template</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E8%BD%AE%E5%AF%B9%E8%AF%9D"><span class="nav-text">多轮对话</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Prompt-Engineering"><span class="nav-text">Prompt Engineering</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Context-Engineering"><span class="nav-text">Context Engineering</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E8%AF%AD"><span class="nav-text">结语</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-text">参考资料</span></a></li></ol>
+
+	</div>
+</div>
+	</div>
+	
+</div>
+
+			</div>
+
+			
+		</div>
+
+		<div class="main-content-footer">
+			<footer class="footer mt-5 py-5 h-auto text-base text-third-text-color relative border-t-2 border-t-border-color">
+    <div class="info-container py-3 text-center">
+        
+        <div class="text-center">
+            &copy;
+            
+              <span>2022</span>
+              -
+            
+            2026&nbsp;&nbsp;<i class="fa-solid fa-heart fa-beat" style="--fa-animation-duration: 0.5s; color: #f54545"></i>&nbsp;&nbsp;<a href="/">Static</a>
+            
+                
+                <p class="post-count space-x-0.5">
+                    <span>
+                        15 posts in total
+                    </span>
+                    
+                </p>
+            
+        </div>
+        
+            <script data-swup-reload-script src="https://cn.vercount.one/js"></script>
+            <div class="relative text-center lg:absolute lg:right-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-right">
+                
+                    <span id="busuanzi_container_site_uv" class="lg:!block">
+                        <span class="text-sm">VISITOR COUNT</span>
+                        <span id="busuanzi_value_site_uv"></span>
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv" class="lg:!block">
+                        <span class="text-sm">TOTAL PAGE VIEWS</span>
+                        <span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="relative text-center lg:absolute lg:left-[20px] lg:top-1/2 lg:-translate-y-1/2 lg:text-left">
+            <span class="lg:block text-sm">POWERED BY <?xml version="1.0" encoding="utf-8"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="relative top-[2px] inline-block align-baseline" version="1.1" id="圖層_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="1rem" height="1rem" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve"><path fill="#0E83CD" d="M256.4,25.8l-200,115.5L56,371.5l199.6,114.7l200-115.5l0.4-230.2L256.4,25.8z M349,354.6l-18.4,10.7l-18.6-11V275H200v79.6l-18.4,10.7l-18.6-11v-197l18.5-10.6l18.5,10.8V237h112v-79.6l18.5-10.6l18.5,10.8V354.6z"/></svg><a target="_blank" class="text-base" href="https://hexo.io">Hexo</a></span>
+            <span class="text-sm lg:block">THEME&nbsp;<a class="text-base" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v2.9.0</a></span>
+        </div>
+        
+        
+            <div>
+                Blog up for <span class="odometer" id="runtime_days" ></span> days <span class="odometer" id="runtime_hours"></span> hrs <span class="odometer" id="runtime_minutes"></span> Min <span class="odometer" id="runtime_seconds"></span> Sec
+            </div>
+        
+        
+            <script data-swup-reload-script>
+                try {
+                    function odometer_init() {
+                    const elements = document.querySelectorAll('.odometer');
+                    elements.forEach(el => {
+                        new Odometer({
+                            el,
+                            format: '( ddd).dd',
+                            duration: 200
+                        });
+                    });
+                    }
+                    odometer_init();
+                } catch (error) {}
+            </script>
+        
+        
+        
+    </div>  
+</footer>
+		</div>
+	</div>
+
+	
+	<div class="post-tools">
+		<div class="post-tools-container">
+	<ul class="article-tools-list">
+		<!-- TOC aside toggle -->
+		
+		<li class="right-bottom-tools page-aside-toggle">
+			<i class="fa-regular fa-outdent"></i>
+		</li>
+		
+
+		<!-- go comment -->
+		
+		<li class="go-comment">
+			<i class="fa-regular fa-comments"></i>
+		</li>
+		
+	</ul>
+</div>
+	</div>
+	
+
+	<div class="right-side-tools-container">
+		<div class="side-tools-container">
+	<ul class="hidden-tools-list">
+		<li class="right-bottom-tools tool-font-adjust-plus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-plus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-font-adjust-minus flex justify-center items-center">
+			<i class="fa-regular fa-magnifying-glass-minus"></i>
+		</li>
+
+		<li class="right-bottom-tools tool-dark-light-toggle flex justify-center items-center">
+			<i class="fa-regular fa-moon"></i>
+		</li>
+
+		<!-- rss -->
+		
+
+		
+
+		<li class="right-bottom-tools tool-scroll-to-bottom flex justify-center items-center">
+			<i class="fa-regular fa-arrow-down"></i>
+		</li>
+	</ul>
+
+	<ul class="visible-tools-list">
+		<li class="right-bottom-tools toggle-tools-list flex justify-center items-center">
+			<i class="fa-regular fa-cog fa-spin"></i>
+		</li>
+		
+		<li class="right-bottom-tools tool-scroll-to-top flex justify-center items-center">
+			<i class="arrow-up fas fa-arrow-up"></i>
+			<span class="percent"></span>
+		</li>
+		
+		
+	</ul>
+</div>
+	</div>
+
+	<div class="image-viewer-container" role="dialog" aria-modal="true" aria-label="Image viewer">
+	<button class="image-viewer-close" type="button" aria-label="Close">
+		<i class="fa-solid fa-xmark"></i>
+	</button>
+	<button class="image-viewer-prev" type="button" aria-label="Prev">
+		<i class="fa-solid fa-chevron-left"></i>
+	</button>
+	<div class="image-viewer-frame">
+		<img src="" alt="">
+	</div>
+	<div class="image-viewer-exif-panel hidden absolute left-1/2 bottom-20 -translate-x-1/2 w-[min(92vw,420px)] max-h-[60vh] overflow-hidden rounded-2xl bg-background-color-transparent-80 p-4 text-left shadow-redefine-flat backdrop-blur-md" role="dialog" aria-label="EXIF" aria-hidden="true">
+		<div class="flex items-center justify-between mb-3">
+			<span class="text-sm font-semibold text-first-text-color">EXIF</span>
+			<button class="image-viewer-exif-close flex h-8 w-8 items-center justify-center rounded-full bg-background-color-transparent-80 text-first-text-color transition hover:bg-background-color-transparent-40" type="button" aria-label="Close">
+				<i class="fa-solid fa-xmark text-[0.65rem]"></i>
+			</button>
+		</div>
+		<div class="image-viewer-exif-cards grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1 scrollbar-hide"></div>
+		<template class="image-viewer-exif-card-template">
+			<div class="rounded-lg bg-background-color-transparent-40 px-3 py-2">
+				<div class="image-viewer-exif-card-header flex items-center gap-2 mb-1">
+					<i class="image-viewer-exif-card-icon fa-solid fa-circle-info text-xs text-third-text-color"></i>
+					<div class="image-viewer-exif-card-title text-xs font-semibold text-first-text-color"></div>
+				</div>
+				<div class="image-viewer-exif-card-items flex flex-col gap-1"></div>
+			</div>
+		</template>
+	</div>
+	<button class="image-viewer-exif-toggle flex items-center gap-2 hidden absolute left-1/2 bottom-6 -translate-x-1/2 rounded-full border border-border-color bg-background-color-transparent-80 px-4 py-2 text-first-text-color backdrop-blur-md transition hover:bg-background-color-transparent-40" type="button" aria-label="EXIF" aria-expanded="false">
+		<i class="fa-solid fa-circle-info text-xs"></i>
+		<span class="text-xs font-semibold uppercase tracking-wider">EXIF</span>
+	</button>
+	<button class="image-viewer-next" type="button" aria-label="Next">
+		<i class="fa-solid fa-chevron-right"></i>
+	</button>
+</div>
+
+
+	
+
+</main>
+
+
+
+<script src="/js/build/libs/Swup.min.js"></script>
+
+<script src="/js/build/libs/SwupSlideTheme.min.js"></script>
+
+<script src="/js/build/libs/SwupScriptsPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupProgressPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupScrollPlugin.min.js"></script>
+
+<script src="/js/build/libs/SwupPreloadPlugin.min.js"></script>
+
+<script>
+    window.swup = new Swup({
+        plugins: [
+            new SwupScriptsPlugin({
+                optin: true,
+            }),
+            new SwupProgressPlugin(),
+            new SwupScrollPlugin({
+                offset: 80,
+            }),
+            new SwupSlideTheme({
+                mainElement: ".main-content-body",
+            }),
+            new SwupPreloadPlugin(),
+        ],
+        containers: ["#swup"],
+    });
+
+    window.dispatchEvent(
+        new CustomEvent("redefine:swup:ready", {
+            detail: {
+                swup: window.swup,
+            },
+        }),
+    );
+</script>
+
+
+
+
+	
+<script src="/js/build/main.js" type="module"></script>
+
+
+
+    
+<script src="/js/build/libs/odometer.min.js"></script>
+
+    
+<link rel="stylesheet" href="/assets/odometer-theme-minimal.css">
+
+
+
+
+
+
+
+  
+<script src="/js/build/libs/Typed.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+<script src="/js/build/libs/moment-with-locales.min.js" data-swup-reload-script=""></script>
+
+
+
+	
+</body>
+
+</html>
