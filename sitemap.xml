@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2026/08/16/Generative%20AI/1.%E5%8E%9F%E7%90%86/</loc>
+    
+    <lastmod>2026-08-16</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/tags/</loc>
+    
+    <lastmod>2026-08-15</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/about/</loc>
+    
+    <lastmod>2026-03-21</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/categories/</loc>
+    
+    <lastmod>2026-03-21</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/11/23/V8/V8%E5%88%A9%E7%94%A8(4)-CVE-2021-38001/</loc>
+    
+    <lastmod>2024-11-23</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/11/02/V8/V8%E5%88%A9%E7%94%A8(3)-CVE-2020-6507/</loc>
+    
+    <lastmod>2024-11-02</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/10/12/V8/V8%E5%88%A9%E7%94%A8(2)-starctf2019-oob/</loc>
+    
+    <lastmod>2024-10-12</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/09/21/V8/V8%E5%88%A9%E7%94%A8(1)-%E5%9F%BA%E7%A1%80/</loc>
+    
+    <lastmod>2024-09-21</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/09/01/kernel%20pwn/Pawnyable(2)%20-%20Heap%20Overflow/</loc>
+    
+    <lastmod>2024-09-01</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/08/17/kernel%20pwn/Pawnyable(1)%20-%20Kernel%20ROP/</loc>
+    
+    <lastmod>2024-08-17</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/07/20/kernel%20pwn/kernel%E5%85%A5%E9%97%A8(2)%E4%B9%8Bret2dir/</loc>
+    
+    <lastmod>2024-07-20</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/07/06/kernel%20pwn/kernel%E5%85%A5%E9%97%A8(1)%E4%B9%8Bcore/</loc>
+    
+    <lastmod>2024-07-06</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/06/22/glibc/Glibc%E5%A0%86%E5%AD%A6%E4%B9%A0/</loc>
+    
+    <lastmod>2024-06-22</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/05/18/CTFS-wp/%E4%B8%80%E4%BA%9Bpwn%E9%A2%98%E7%9A%84writeup/</loc>
+    
+    <lastmod>2024-05-18</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/04/06/CTFS-wp/CISCN2023_WP/</loc>
+    
+    <lastmod>2024-04-06</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/03/16/CTFS-wp/%E9%99%95%E8%A5%BF%E7%9C%81%E7%9C%81%E8%B5%9B%20wp%20&%20%E5%A4%8D%E7%8E%B0/</loc>
+    
+    <lastmod>2024-03-16</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/02/03/CTFS-wp/minilctf2023%20wp/</loc>
+    
+    <lastmod>2024-02-03</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/2024/01/15/CTFS-wp/Hgame%202023%20%E9%83%A8%E5%88%86wp/</loc>
+    
+    <lastmod>2024-01-15</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+
+  <url>
+    <loc>https://staticccccccc.github.io/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  
+  <url>
+    <loc>https://staticccccccc.github.io/tags/old-article/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/tags/AI/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/tags/LLM/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+
+  
+  <url>
+    <loc>https://staticccccccc.github.io/categories/CTFS/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/categories/V8/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/categories/glibc/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/categories/kernel-pwn/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/categories/Generative-AI/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+</urlset>
