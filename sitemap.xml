@@ -203,20 +203,6 @@
   </url>
   
   <url>
-    <loc>https://staticccccccc.github.io/categories/V8/</loc>
-    <lastmod>2026-09-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>https://staticccccccc.github.io/categories/glibc/</loc>
-    <lastmod>2026-09-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
     <loc>https://staticccccccc.github.io/categories/kernel-pwn/</loc>
     <lastmod>2026-09-26</lastmod>
     <changefreq>weekly</changefreq>
@@ -225,6 +211,20 @@
   
   <url>
     <loc>https://staticccccccc.github.io/categories/Generative-AI/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/categories/V8/</loc>
+    <lastmod>2026-09-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://staticccccccc.github.io/categories/glibc/</loc>
     <lastmod>2026-09-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
